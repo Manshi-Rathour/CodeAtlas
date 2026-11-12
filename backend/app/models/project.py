@@ -92,3 +92,11 @@ class Project(Base):
         "User",
         back_populates="projects"
     )
+
+    # Relationship with ProjectFile
+    files = relationship(
+        "ProjectFile",
+        back_populates="project",
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
