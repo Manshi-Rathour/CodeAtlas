@@ -1,0 +1,40 @@
+
+/* Signup page specific styles */
+
+.auth-form-wrapper:has(#full_name) .auth-heading {
+  margin-bottom: 25px;
+}
+
+.auth-form-wrapper:has(#full_name) .auth-heading-icon {
+  margin-bottom: 15px;
+}
+
+.auth-form-wrapper:has(#full_name) .auth-form {
+  gap: 16px;
+}
+
+.auth-form-wrapper:has(#full_name) .auth-field {
+  gap: 8px;
+}
+
+.auth-form-wrapper:has(#full_name) .auth-input-wrapper {
+  min-height: 48px;
+}
+
+.auth-form-wrapper:has(#full_name) .auth-input-wrapper input {
+  height: 46px;
+}
+
+.auth-form-wrapper:has(#full_name) .auth-submit-button {
+  min-height: 49px;
+}
+
+.auth-form-wrapper:has(#full_name) .auth-security-note {
+  margin-top: 25px;
+}
+
+@media (max-width: 680px) {
+  .auth-form-wrapper:has(#full_name) .auth-mobile-brand {
+    margin-bottom: 25px;
+  }
+}
