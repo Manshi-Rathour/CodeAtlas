@@ -1,4 +1,3 @@
-
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
@@ -9,7 +8,7 @@ import {
   Settings,
   LogOut,
   Network,
-  ChevronLeft,
+  LockKeyhole,
 } from 'lucide-react'
 
 import useAuth from '../../hooks/useAuth'
@@ -24,26 +23,28 @@ function Sidebar() {
       label: 'Overview',
       path: '/dashboard',
       icon: LayoutDashboard,
+      available: true,
     },
     {
       label: 'My Projects',
       path: '/dashboard/projects',
       icon: FolderKanban,
+      available: true,
     },
     {
       label: 'Dependency Graph',
-      path: '/dashboard/graph',
       icon: GitBranch,
+      available: false,
     },
     {
       label: 'AI Code Chat',
-      path: '/dashboard/chat',
       icon: MessageSquare,
+      available: false,
     },
     {
       label: 'Documentation',
-      path: '/dashboard/documentation',
       icon: FileText,
+      available: false,
     },
   ]
 
@@ -73,6 +74,22 @@ function Sidebar() {
         {navigationItems.map((item) => {
           const Icon = item.icon
 
+          if (!item.available) {
+            return (
+              <div
+                key={item.label}
+                className="sidebar-nav-link sidebar-nav-disabled"
+                aria-disabled="true"
+              >
+                <Icon size={19} />
+                <span>{item.label}</span>
+                <span className="sidebar-coming-soon">
+                  Soon
+                </span>
+              </div>
+            )
+          }
+
           return (
             <NavLink
               key={item.path}
@@ -90,15 +107,20 @@ function Sidebar() {
       </nav>
 
       <div className="sidebar-bottom">
-        <NavLink
-          to="/dashboard/profile"
-          className={({ isActive }) =>
-            `sidebar-nav-link ${isActive ? 'active' : ''}`
-          }
+        <div className="sidebar-section-label">
+          PREFERENCES
+        </div>
+
+        <div
+          className="sidebar-nav-link sidebar-nav-disabled"
+          aria-disabled="true"
         >
           <Settings size={19} />
           <span>Settings</span>
-        </NavLink>
+          <span className="sidebar-coming-soon">
+            Soon
+          </span>
+        </div>
 
         <div className="sidebar-user">
           <div className="sidebar-user-avatar">
@@ -118,6 +140,10 @@ function Sidebar() {
           <LogOut size={18} />
           <span>Sign out</span>
         </button>
+
+        <div className="sidebar-version">
+          CodeAtlas · MVP
+        </div>
       </div>
     </aside>
   )

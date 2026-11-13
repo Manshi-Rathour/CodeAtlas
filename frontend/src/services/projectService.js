@@ -43,6 +43,15 @@ const projectService = {
     )
     return response.data
   },
+
+  // Retrieves the source code and metadata of a specific project file
+  getProjectFileContent: async (projectId, fileId) => {
+  const response = await api.get(
+    `/api/projects/${projectId}/files/${fileId}/content`
+  )
+
+  return response.data
+},
 }
 
 export default projectService

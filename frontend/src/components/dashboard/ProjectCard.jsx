@@ -1,4 +1,4 @@
-
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
     FolderCode,
@@ -7,10 +7,17 @@ import {
     ArrowUpRight,
     FileCode2,
     Clock3,
+    Trash2,
+    LoaderCircle,
 } from 'lucide-react'
 
-function ProjectCard({ project }) {
+import projectService from '../../services/projectService'
+
+function ProjectCard({ project, onDelete }) {
     const navigate = useNavigate()
+
+    const [isDeleting, setIsDeleting] = useState(false)
+    const [deleteError, setDeleteError] = useState('')
 
     const isGithub = project?.source_type === 'github'
 
@@ -20,6 +27,34 @@ function ProjectCard({ project }) {
 
     const handleExplore = () => {
         navigate(`/dashboard/projects/${project.id}`)
+    }
+
+    const handleDelete = async () => {
+        const confirmed = window.confirm(
+            `Are you sure you want to delete "${project.name}"? This action cannot be undone.`
+        )
+
+        if (!confirmed) return
+
+        try {
+            setIsDeleting(true)
+            setDeleteError('')
+
+            await projectService.deleteProject(project.id)
+
+            if (onDelete) {
+                onDelete(project.id)
+            }
+        } catch (error) {
+            console.error('Project deletion error:', error)
+
+            setDeleteError(
+                error.response?.data?.detail ||
+                'Unable to delete this project. Please try again.'
+            )
+        } finally {
+            setIsDeleting(false)
+        }
     }
 
     return (
@@ -59,20 +94,42 @@ function ProjectCard({ project }) {
                 </div>
             </div>
 
+            {deleteError && (
+                <p className="project-delete-error">
+                    {deleteError}
+                </p>
+            )}
+
             <div className="project-card-footer">
                 <span className="project-source-label">
                     <FolderCode size={15} />
                     {isGithub ? 'GitHub Repository' : 'ZIP Upload'}
                 </span>
 
-                <button
-                    className="project-explore-button"
-                    onClick={handleExplore}
-                    disabled={!project?.id}
-                >
-                    Explore
-                    <ArrowUpRight size={16} />
-                </button>
+                <div className="project-card-actions">
+                    <button
+                        className="project-delete-button"
+                        onClick={handleDelete}
+                        disabled={isDeleting}
+                        title="Delete project"
+                        aria-label={`Delete ${project?.name || 'project'}`}
+                    >
+                        {isDeleting ? (
+                            <LoaderCircle size={17} className="refresh-spinning" />
+                        ) : (
+                            <Trash2 size={17} />
+                        )}
+                    </button>
+
+                    <button
+                        className="project-explore-button"
+                        onClick={handleExplore}
+                        disabled={!project?.id || isDeleting}
+                    >
+                        Explore
+                        <ArrowUpRight size={16} />
+                    </button>
+                </div>
             </div>
         </article>
     )

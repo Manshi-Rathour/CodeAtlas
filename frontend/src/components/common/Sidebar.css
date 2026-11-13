@@ -1,8 +1,3 @@
-
-/* =========================================
-   CODEATLAS SIDEBAR
-========================================= */
-
 .dashboard-sidebar {
   position: fixed;
   top: 0;
@@ -280,4 +275,36 @@
   .sidebar-user {
     margin-top: 5px;
   }
+}
+
+
+
+
+
+/* Disabled navigation items */
+
+.sidebar-nav-disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  user-select: none;
+}
+
+.sidebar-nav-disabled:hover {
+  color: #94a3b8;
+  background: transparent;
+}
+
+.sidebar-nav-disabled:hover svg {
+  color: #718198;
+}
+
+.sidebar-coming-soon {
+  margin-left: auto;
+  padding: 3px 6px;
+  border: 1px solid rgba(96, 165, 250, 0.18);
+  border-radius: 5px;
+  color: #60a5fa;
+  font-size: 9px;
+  font-weight: 600;
+  white-space: nowrap;
 }
