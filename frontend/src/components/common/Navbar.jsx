@@ -28,7 +28,7 @@ function Navbar() {
           </a>
 
           <a href="#languages" onClick={() => setMenuOpen(false)}>
-            Languages
+            Language Support
           </a>
 
           <div className="mobile-nav-actions">
