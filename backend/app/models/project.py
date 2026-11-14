@@ -100,3 +100,10 @@ class Project(Base):
         cascade="all, delete-orphan",
         passive_deletes=True
     )
+
+    # Relationship with Dependency
+    dependencies = relationship(
+        "Dependency",
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )

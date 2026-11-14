@@ -96,6 +96,15 @@ class ProjectFile(Base):
         passive_deletes=True
     )
 
+    # Relationship with Dependency
+    dependencies = relationship(
+        "Dependency",
+        back_populates="file",
+        foreign_keys="Dependency.file_id",
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
+
     # Prevent duplicate file paths within the same project
     __table_args__ = (
         UniqueConstraint(

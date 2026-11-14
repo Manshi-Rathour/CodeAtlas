@@ -6,8 +6,10 @@ from app.models.project import Project
 from app.models.project_file import ProjectFile
 from app.models.code_symbol import CodeSymbol
 from app.models.code_chunk import CodeChunk
+from app.models.dependency import Dependency
 
 from app.services.analysis.parser_manager import analyze_file
+from app.services.analysis.dependency_resolver import resolve_dependencies
 
 from app.services.analysis.file_scanner import (
     is_binary_file,
@@ -59,10 +61,16 @@ def analyze_project(
         )
     ).delete(synchronize_session=False)
 
+    # Remove dependencies from previous analysis.
+    db.query(Dependency).filter(
+        Dependency.project_id == project.id
+    ).delete(synchronize_session=False)
+
     total_analyzed = 0
     total_skipped = 0
     total_symbols = 0
     total_chunks = 0
+    total_dependencies = 0
 
     try:
 
@@ -152,6 +160,21 @@ def analyze_project(
                     db.add(code_chunk)
                     total_chunks += 1
 
+                # Save extracted dependencies.
+                for dependency in result["dependencies"]:
+
+                    code_dependency = Dependency(
+                        project_id=project.id,
+                        file_id=project_file.id,
+                        dependency_name=dependency["dependency_name"],
+                        dependency_type=dependency["dependency_type"],
+                        line_number=dependency["line_number"],
+                        imported_symbols=dependency["imported_symbols"],
+                    )
+
+                    db.add(code_dependency)
+                    total_dependencies += 1
+
                 total_analyzed += 1
 
             except (OSError, UnicodeDecodeError, ValueError):
@@ -160,7 +183,17 @@ def analyze_project(
                 total_skipped += 1
                 continue
 
-        # Save all extracted symbols.
+        # Resolve local dependencies after all files are analyzed.
+        dependencies = db.query(Dependency).filter(
+            Dependency.project_id == project.id
+        ).all()
+
+        resolved_dependencies = resolve_dependencies(
+            dependencies,
+            project_files
+        )
+
+        # Save symbols, chunks and resolved dependencies.
         db.commit()
 
         return {
@@ -170,6 +203,8 @@ def analyze_project(
             "skipped_files": total_skipped,
             "total_symbols": total_symbols,
             "total_chunks": total_chunks,
+            "total_dependencies": total_dependencies,
+            "resolved_dependencies": resolved_dependencies,
         }
 
     except Exception:

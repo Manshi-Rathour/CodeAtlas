@@ -14,6 +14,7 @@ from app.services.analysis.analysis_service import analyze_project
 from app.models.code_symbol import CodeSymbol
 from app.models.code_chunk import CodeChunk
 from app.models.project_file import ProjectFile
+from app.models.dependency import Dependency
 
 
 router = APIRouter(
@@ -294,11 +295,17 @@ def get_project_analysis(
         CodeChunk.file_id.in_(file_map.keys())
     ).all()
 
+    # Retrieve dependencies.
+    dependencies = db.query(Dependency).filter(
+        Dependency.project_id == project_id
+    ).all()
+
     return {
         "project_id": project_id,
 
         "total_symbols": len(symbols),
         "total_chunks": len(chunks),
+        "total_dependencies": len(dependencies),
 
         "symbols": [
             {
@@ -324,5 +331,18 @@ def get_project_analysis(
                 "content": chunk.content,
             }
             for chunk in chunks
+        ],
+
+        "dependencies": [
+            {
+                "id": dependency.id,
+                "file": file_map.get(dependency.file_id),
+                "name": dependency.dependency_name,
+                "type": dependency.dependency_type,
+                "line_number": dependency.line_number,
+                "imported_symbols": dependency.imported_symbols,
+                "resolved_file": file_map.get(dependency.resolved_file_id),
+            }
+            for dependency in dependencies
         ],
     }
