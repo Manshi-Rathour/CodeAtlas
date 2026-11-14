@@ -507,9 +507,13 @@ function ProjectOverviewPage() {
                           Line {dependency.line_number}
                         </span>
 
-                        {dependency.resolved_file && (
-                          <span>
+                        {dependency.resolved_file ? (
+                          <span className="analysis-resolved">
                             Imported from: {dependency.resolved_file}
+                          </span>
+                        ) : (
+                          <span className="analysis-unresolved">
+                            Not found in this project
                           </span>
                         )}
                       </div>

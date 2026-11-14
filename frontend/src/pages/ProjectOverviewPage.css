@@ -627,6 +627,15 @@
   text-transform: capitalize;
 }
 
+.analysis-resolved {
+  color: #93c5fd;
+}
+
+.analysis-unresolved {
+  color: #64748b;
+  font-style: italic;
+}
+
 .analysis-code-details {
   margin-top: 13px;
   border-top: 1px solid #26364d;

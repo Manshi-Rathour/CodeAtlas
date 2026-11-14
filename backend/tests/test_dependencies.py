@@ -17,13 +17,20 @@ class FakeFile:
 class FakeDependency:
     """Minimal Dependency stand-in for resolver unit tests."""
 
-    def __init__(self, file_id, dependency_name):
+    def __init__(self, file_id, dependency_name, dependency_type="import"):
         self.file_id = file_id
         self.dependency_name = dependency_name
+        self.dependency_type = dependency_type
         self.resolved_file_id = None
 
 
-def resolve_one(source_path, dependency_name, project_paths, language):
+def resolve_one(
+    source_path,
+    dependency_name,
+    project_paths,
+    language,
+    dependency_type="import",
+):
     source_id = 100
     files = [
         FakeFile(source_id, source_path, language)
@@ -34,7 +41,11 @@ def resolve_one(source_path, dependency_name, project_paths, language):
             FakeFile(index, path, language)
         )
 
-    dependency = FakeDependency(source_id, dependency_name)
+    dependency = FakeDependency(
+        source_id,
+        dependency_name,
+        dependency_type,
+    )
 
     resolve_dependencies([dependency], files)
 
@@ -281,3 +292,207 @@ def test_analyze_project_keeps_external_dependencies_unresolved(
 
     assert dependencies["react"].resolved_file_id is None
     assert dependencies["./App"].resolved_file_id is not None
+
+
+def test_resolves_typescript_index_file():
+    resolved = resolve_one(
+        "src/main.ts",
+        "./components",
+        ["src/components/index.tsx"],
+        "TypeScript",
+    )
+
+    assert resolved == 1
+
+
+def test_resolves_typescript_relative_import():
+    resolved = resolve_one(
+        "src/pages/Home.tsx",
+        "../components/Button",
+        ["src/components/Button.tsx"],
+        "TypeScript",
+    )
+
+    assert resolved == 1
+
+
+def test_resolves_java_import_below_nested_source_root():
+    resolved = resolve_one(
+        "src/main/java/com/example/App.java",
+        "com.example.service.UserService",
+        ["src/main/java/com/example/service/UserService.java"],
+        "Java",
+    )
+
+    assert resolved == 1
+
+
+def test_leaves_external_java_import_unresolved():
+    resolved = resolve_one(
+        "src/main/java/com/example/App.java",
+        "java.util.List",
+        ["src/main/java/com/example/storage/List.java"],
+        "Java",
+    )
+
+    assert resolved is None
+
+
+def test_resolves_kotlin_import():
+    resolved = resolve_one(
+        "src/main/kotlin/com/example/App.kt",
+        "com.example.models.User",
+        ["src/main/kotlin/com/example/models/User.kt"],
+        "Kotlin",
+    )
+
+    assert resolved == 1
+
+
+def test_resolves_local_c_include():
+    resolved = resolve_one(
+        "src/main.c",
+        "util/helpers.h",
+        ["src/util/helpers.h"],
+        "C",
+        dependency_type="local_include",
+    )
+
+    assert resolved == 1
+
+
+def test_resolves_relative_c_include():
+    resolved = resolve_one(
+        "src/parser/main.c",
+        "../util/helpers.h",
+        ["src/util/helpers.h"],
+        "C",
+        dependency_type="local_include",
+    )
+
+    assert resolved == 1
+
+
+def test_leaves_system_c_include_unresolved():
+    resolved = resolve_one(
+        "src/main.c",
+        "stdio.h",
+        ["src/util/helpers.h"],
+        "C",
+        dependency_type="system_include",
+    )
+
+    assert resolved is None
+
+
+def test_resolves_go_package_import():
+    resolved = resolve_one(
+        "cmd/server/main.go",
+        "example.com/app/internal/auth",
+        ["internal/auth/auth.go"],
+        "Go",
+    )
+
+    assert resolved == 1
+
+
+def test_leaves_go_standard_library_import_unresolved():
+    resolved = resolve_one(
+        "cmd/server/main.go",
+        "fmt",
+        ["internal/auth/auth.go"],
+        "Go",
+    )
+
+    assert resolved is None
+
+
+def test_resolves_rust_module_import():
+    resolved = resolve_one(
+        "src/main.rs",
+        "crate::services::auth::login",
+        ["src/services/auth.rs"],
+        "Rust",
+    )
+
+    assert resolved == 1
+
+
+def test_resolves_rust_mod_file_import():
+    resolved = resolve_one(
+        "src/main.rs",
+        "crate::services::auth",
+        ["src/services/auth/mod.rs"],
+        "Rust",
+    )
+
+    assert resolved == 1
+
+
+def test_leaves_rust_standard_library_import_unresolved():
+    resolved = resolve_one(
+        "src/main.rs",
+        "std::collections::HashMap",
+        ["src/services/auth.rs"],
+        "Rust",
+    )
+
+    assert resolved is None
+
+
+def test_resolves_php_namespaced_import():
+    resolved = resolve_one(
+        "public/index.php",
+        "App\\Models\\User",
+        ["src/Models/User.php"],
+        "PHP",
+    )
+
+    assert resolved == 1
+
+
+def test_leaves_external_php_import_unresolved():
+    resolved = resolve_one(
+        "public/index.php",
+        "Illuminate\\Support\\Collection",
+        ["src/Models/User.php"],
+        "PHP",
+    )
+
+    assert resolved is None
+
+
+def test_resolves_ruby_relative_require():
+    resolved = resolve_one(
+        "app/main.rb",
+        "helpers/format",
+        ["app/helpers/format.rb"],
+        "Ruby",
+        dependency_type="require_relative",
+    )
+
+    assert resolved == 1
+
+
+def test_resolves_ruby_require_from_lib_root():
+    resolved = resolve_one(
+        "app/main.rb",
+        "foo/bar",
+        ["lib/foo/bar.rb"],
+        "Ruby",
+        dependency_type="require",
+    )
+
+    assert resolved == 1
+
+
+def test_leaves_external_ruby_require_unresolved():
+    resolved = resolve_one(
+        "app/main.rb",
+        "json",
+        ["lib/foo/bar.rb"],
+        "Ruby",
+        dependency_type="require",
+    )
+
+    assert resolved is None
