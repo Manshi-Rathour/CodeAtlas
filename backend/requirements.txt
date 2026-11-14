@@ -27,3 +27,5 @@ requests
 pytest
 httpx
 httpx2
+
+tree-sitter-language-pack

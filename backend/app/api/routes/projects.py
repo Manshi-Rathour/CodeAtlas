@@ -1,4 +1,3 @@
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -11,6 +10,10 @@ from app.schemas.project import (
     ProjectResponse
 )
 from app.api.dependencies import get_current_user
+from app.services.analysis.analysis_service import analyze_project
+from app.models.code_symbol import CodeSymbol
+from app.models.code_chunk import CodeChunk
+from app.models.project_file import ProjectFile
 
 
 router = APIRouter(
@@ -193,4 +196,133 @@ def delete_project(
     return {
         "message": "Project deleted successfully.",
         "project_id": project_id
+    }
+
+
+# --------------------------------------------------
+# 6. ANALYZE PROJECT
+# --------------------------------------------------
+
+@router.post(
+    "/{project_id}/analyze"
+)
+def analyze_project_endpoint(
+    project_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+
+    # Verify project ownership.
+    project = db.query(Project).filter(
+        Project.id == project_id,
+        Project.owner_id == current_user.id
+    ).first()
+
+    if project is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found."
+        )
+
+    try:
+        # Run project-wide code analysis.
+        result = analyze_project(
+            db,
+            project
+        )
+
+        return {
+            "message": "Project analysis completed successfully.",
+            "analysis": result
+        }
+
+    except ValueError as error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(error)
+        )
+
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Project analysis failed."
+        )
+
+
+# --------------------------------------------------
+# 7. GET PROJECT ANALYSIS RESULTS
+# --------------------------------------------------
+
+@router.get(
+    "/{project_id}/analysis"
+)
+def get_project_analysis(
+    project_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+
+    # Verify project ownership.
+    project = db.query(Project).filter(
+        Project.id == project_id,
+        Project.owner_id == current_user.id
+    ).first()
+
+    if project is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found."
+        )
+
+    # Retrieve project files.
+    project_files = db.query(ProjectFile).filter(
+        ProjectFile.project_id == project_id
+    ).all()
+
+    file_map = {
+        file.id: file.relative_path
+        for file in project_files
+    }
+
+    # Retrieve code symbols.
+    symbols = db.query(CodeSymbol).filter(
+        CodeSymbol.file_id.in_(file_map.keys())
+    ).all()
+
+    # Retrieve code chunks.
+    chunks = db.query(CodeChunk).filter(
+        CodeChunk.file_id.in_(file_map.keys())
+    ).all()
+
+    return {
+        "project_id": project_id,
+
+        "total_symbols": len(symbols),
+        "total_chunks": len(chunks),
+
+        "symbols": [
+            {
+                "id": symbol.id,
+                "file": file_map.get(symbol.file_id),
+                "name": symbol.name,
+                "type": symbol.symbol_type,
+                "start_line": symbol.start_line,
+                "end_line": symbol.end_line,
+                "source_code": symbol.source_code,
+            }
+            for symbol in symbols
+        ],
+
+        "chunks": [
+            {
+                "id": chunk.id,
+                "file": file_map.get(chunk.file_id),
+                "name": chunk.name,
+                "type": chunk.chunk_type,
+                "start_line": chunk.start_line,
+                "end_line": chunk.end_line,
+                "content": chunk.content,
+            }
+            for chunk in chunks
+        ],
     }

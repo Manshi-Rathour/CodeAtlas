@@ -1,4 +1,3 @@
-
 from datetime import datetime
 
 from sqlalchemy import (
@@ -79,6 +78,22 @@ class ProjectFile(Base):
     project = relationship(
         "Project",
         back_populates="files"
+    )
+
+    # Relationship with CodeSymbol
+    symbols = relationship(
+        "CodeSymbol",
+        back_populates="file",
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
+
+    # Relationship with CodeChunk
+    chunks = relationship(
+        "CodeChunk",
+        back_populates="file",
+        cascade="all, delete-orphan",
+        passive_deletes=True
     )
 
     # Prevent duplicate file paths within the same project
