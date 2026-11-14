@@ -71,6 +71,7 @@ def analyze_project(
     total_symbols = 0
     total_chunks = 0
     total_dependencies = 0
+    created_dependencies = []
 
     try:
 
@@ -173,6 +174,7 @@ def analyze_project(
                     )
 
                     db.add(code_dependency)
+                    created_dependencies.append(code_dependency)
                     total_dependencies += 1
 
                 total_analyzed += 1
@@ -184,12 +186,11 @@ def analyze_project(
                 continue
 
         # Resolve local dependencies after all files are analyzed.
-        dependencies = db.query(Dependency).filter(
-            Dependency.project_id == project.id
-        ).all()
-
+        # Use the newly created objects directly: the session is configured
+        # with autoflush=False, so querying before a flush would return an
+        # empty result set and nothing would ever be resolved.
         resolved_dependencies = resolve_dependencies(
-            dependencies,
+            created_dependencies,
             project_files
         )
 

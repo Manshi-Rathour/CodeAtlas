@@ -351,7 +351,7 @@ function ProjectOverviewPage() {
                 <div className="analysis-stat-icon">
                   <Database size={21} />
                 </div>
-                <span>Code Chunks</span>
+                <span>Code Sections</span>
                 <strong>{analysisData?.total_chunks ?? 0}</strong>
               </div>
             </div>
@@ -360,16 +360,16 @@ function ProjectOverviewPage() {
             <div className="analysis-results">
               <div className="analysis-results-heading">
                 <div>
-                  <h3>Extracted Symbols</h3>
+                  <h3>Functions &amp; Classes</h3>
                   <p>Functions, methods, and classes discovered in your code</p>
                 </div>
 
-                <span>{symbols.length} symbols</span>
+                <span>{symbols.length} found</span>
               </div>
 
               {symbols.length === 0 ? (
                 <div className="analysis-empty">
-                  No symbols found. Run analysis to inspect your codebase.
+                  No functions or classes found. Run analysis to inspect your codebase.
                 </div>
               ) : (
                 <div className="analysis-list">
@@ -415,16 +415,16 @@ function ProjectOverviewPage() {
             <div className="analysis-results">
               <div className="analysis-results-heading">
                 <div>
-                  <h3>Code Chunks</h3>
+                  <h3>Code Sections</h3>
                   <p>Structured HTML elements, CSS rules, and SQL statements</p>
                 </div>
 
-                <span>{chunks.length} chunks</span>
+                <span>{chunks.length} found</span>
               </div>
 
               {chunks.length === 0 ? (
                 <div className="analysis-empty">
-                  No code chunks found yet.
+                  No code sections found yet.
                 </div>
               ) : (
                 <div className="analysis-list">
@@ -494,7 +494,7 @@ function ProjectOverviewPage() {
 
                         <div>
                           <strong>{dependency.name}</strong>
-                          <span>{dependency.file}</span>
+                          <span>Used in: {dependency.file}</span>
                         </div>
                       </div>
 
@@ -509,7 +509,7 @@ function ProjectOverviewPage() {
 
                         {dependency.resolved_file && (
                           <span>
-                            Resolved to: {dependency.resolved_file}
+                            Imported from: {dependency.resolved_file}
                           </span>
                         )}
                       </div>
