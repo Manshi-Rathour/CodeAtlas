@@ -15,6 +15,7 @@ from app.models.code_symbol import CodeSymbol
 from app.models.code_chunk import CodeChunk
 from app.models.project_file import ProjectFile
 from app.models.dependency import Dependency
+from app.services.analysis.framework_detector import detect_project_technologies
 
 
 router = APIRouter(
@@ -300,12 +301,18 @@ def get_project_analysis(
         Dependency.project_id == project_id
     ).all()
 
+    technologies = detect_project_technologies(
+        db=db,
+        project_id=project_id
+    )
+
     return {
         "project_id": project_id,
 
         "total_symbols": len(symbols),
         "total_chunks": len(chunks),
         "total_dependencies": len(dependencies),
+        "technologies": technologies,
 
         "symbols": [
             {

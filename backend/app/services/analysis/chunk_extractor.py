@@ -1,10 +1,40 @@
 def extract_chunks(analysis_result: dict) -> list[dict]:
     """
-    Convert HTML, CSS and SQL analysis results
-    into standardized code chunks.
+    Convert extracted functions, methods, classes,
+    HTML, CSS and SQL structures into standardized code chunks.
     """
 
     chunks = []
+
+    # Extract functions
+    for function in analysis_result.get("functions", []):
+        chunks.append({
+            "name": function["name"],
+            "chunk_type": "function",
+            "start_line": function["line"],
+            "end_line": function["end_line"],
+            "content": function["source_code"],
+        })
+
+    # Extract methods
+    for method in analysis_result.get("methods", []):
+        chunks.append({
+            "name": method["name"],
+            "chunk_type": "method",
+            "start_line": method["line"],
+            "end_line": method["end_line"],
+            "content": method["source_code"],
+        })
+
+    # Extract classes
+    for class_info in analysis_result.get("classes", []):
+        chunks.append({
+            "name": class_info["name"],
+            "chunk_type": "class",
+            "start_line": class_info["line"],
+            "end_line": class_info["end_line"],
+            "content": class_info["source_code"],
+        })
 
     # Extract HTML elements
     for element in analysis_result.get("html_elements", []):

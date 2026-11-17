@@ -1,4 +1,3 @@
-
 from logging.config import fileConfig
 
 from alembic import context
@@ -7,8 +6,16 @@ from sqlalchemy import engine_from_config, pool
 from app.core.config import settings
 from app.database.base import Base
 
-# Import all models so Alembic can detect them.
-from app.models import User, Project, ProjectFile
+from app.models import (
+    User,
+    Project,
+    ProjectFile,
+    CodeSymbol,
+    CodeChunk,
+    Dependency,
+    Chat,
+    Documentation,
+)
 
 
 config = context.config

@@ -10,6 +10,7 @@ from app.models.dependency import Dependency
 
 from app.services.analysis.parser_manager import analyze_file
 from app.services.analysis.dependency_resolver import resolve_dependencies
+from app.services.analysis.generic_chunk_extractor import extract_generic_chunks
 
 from app.services.analysis.file_scanner import (
     is_binary_file,
@@ -127,10 +128,11 @@ def analyze_project(
                     project_file.language
                 )
 
-                # Skip unsupported languages.
+                # Use generic text chunking for unsupported languages.
                 if not result["supported"]:
-                    total_skipped += 1
-                    continue
+                    result["symbols"] = []
+                    result["dependencies"] = []
+                    result["chunks"] = extract_generic_chunks(source_code)
 
                 # Save extracted symbols.
                 for symbol in result["symbols"]:

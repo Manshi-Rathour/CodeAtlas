@@ -11,6 +11,10 @@ from app.api.routes.projects import router as projects_router
 from app.api.routes.uploads import router as uploads_router
 from app.api.routes.github import router as github_router
 from app.api.routes.files import router as files_router
+from app.api.routes.chat import router as chat_router
+from app.api.routes.documentation import router as documentation_router
+from app.api.routes.architecture import router as architecture_router
+
 
 app = FastAPI(
     title="CodeAtlas API",
@@ -40,6 +44,9 @@ app.include_router(projects_router)
 app.include_router(uploads_router)
 app.include_router(github_router)
 app.include_router(files_router)
+app.include_router(chat_router)
+app.include_router(documentation_router)
+app.include_router(architecture_router)
 
 
 # --------------------------------------------------

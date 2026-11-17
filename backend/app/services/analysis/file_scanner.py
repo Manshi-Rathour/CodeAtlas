@@ -1,4 +1,3 @@
-
 import os
 from pathlib import Path
 from collections import Counter
@@ -75,7 +74,7 @@ LANGUAGE_MAP = {
     ".cjs": "JavaScript",
 
     ".ts": "TypeScript",
-    ".tsx": "TypeScript",
+    ".tsx": "TSX",
     ".mts": "TypeScript",
     ".cts": "TypeScript",
 
@@ -167,6 +166,27 @@ LANGUAGE_MAP = {
     ".makefile": "Makefile",
 }
 
+# File types that are not programming languages.
+NON_PROGRAMMING_FILE_TYPES = {
+    "JSON",
+    "TOML",
+    "XML",
+    "Markdown",
+    "MDX",
+    "YAML",
+    "SCSS",
+    "Sass",
+    "Less",
+    "Other",
+    "Dockerfile",
+    "Makefile",
+    "Gradle",
+    "Terraform",
+    "HCL",
+    "reStructuredText",
+    "Jupyter Notebook",
+    "Procfile",
+}
 
 # Special filenames without normal extensions
 SPECIAL_FILENAME_MAP = {
