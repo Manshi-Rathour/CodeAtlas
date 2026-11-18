@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 
 import Sidebar from '../components/common/Sidebar'
+import DashboardTopbar from '../components/common/DashboardTopbar'
 import ProjectCard from '../components/dashboard/ProjectCard'
 import projectService from '../services/projectService'
 
@@ -101,13 +102,11 @@ function AllProjectsPage() {
       <Sidebar />
 
       <main className="dashboard-main">
-        <header className="dashboard-topbar">
-          <div className="dashboard-breadcrumb">
-            <span>Workspace</span>
-            <span className="breadcrumb-separator">/</span>
-            <strong>My Projects</strong>
-          </div>
-        </header>
+        <DashboardTopbar>
+          <span>Workspace</span>
+          <span className="breadcrumb-separator">/</span>
+          <strong>My Projects</strong>
+        </DashboardTopbar>
 
         <div className="dashboard-content all-projects-content">
 

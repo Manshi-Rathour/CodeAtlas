@@ -15,6 +15,7 @@ from app.schemas.documentation import (
 
 from app.services.documentation.documentation_service import (
     generate_project_documentation,
+    sanitize_documentation,
 )
 
 
@@ -103,7 +104,15 @@ def get_documentation(
             detail="Documentation has not been generated yet."
         )
 
-    return documentation
+    # Older records may contain Markdown links from previous prompts.
+    # Sanitize on read so broken links are never shown in the app.
+    return DocumentationResponse(
+        id=documentation.id,
+        project_id=documentation.project_id,
+        content=sanitize_documentation(documentation.content),
+        created_at=documentation.created_at,
+        updated_at=documentation.updated_at,
+    )
 
 
 @router.get(

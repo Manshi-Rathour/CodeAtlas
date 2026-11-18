@@ -66,7 +66,10 @@ def analyze_file(source_code: str, language: str) -> dict:
     chunks = extract_chunks(analysis_result)
 
     # Extract standardized dependencies.
-    dependencies = extract_dependencies(analysis_result)
+    dependencies = extract_dependencies(
+        analysis_result,
+        source_code,
+    )
 
     return {
         "language": normalized_name,

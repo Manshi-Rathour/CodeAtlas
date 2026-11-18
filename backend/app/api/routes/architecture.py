@@ -25,10 +25,16 @@ router = APIRouter(
 @router.get("/{project_id}/architecture")
 async def get_project_architecture(
     project_id: int,
+    include_ai: bool = True,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Retrieve structural and AI-generated project architecture."""
+    """
+    Retrieve structural and AI-generated project architecture.
+
+    Set include_ai=false to return database-derived facts only.
+    This keeps the page responsive when a local model is busy.
+    """
 
     try:
         architecture = analyze_project_architecture(
@@ -41,9 +47,12 @@ async def get_project_architecture(
             architecture
         )
 
-        explanation = await generate_architecture_explanation(
-            architecture
-        )
+        explanation = None
+
+        if include_ai:
+            explanation = await generate_architecture_explanation(
+                architecture
+            )
 
         architecture["architecture_summary"] = architecture_summary
         architecture["ai_explanation"] = explanation

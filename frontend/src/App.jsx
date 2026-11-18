@@ -8,6 +8,10 @@ import AllProjectsPage from './pages/AllProjectsPage'
 import CreateProjectPage from './pages/CreateProjectPage'
 import ProjectOverviewPage from './pages/ProjectOverviewPage'
 import FileExplorerPage from './pages/FileExplorerPage'
+import CodebaseChatPage from './pages/CodebaseChatPage'
+import ArchitecturePage from './pages/ArchitecturePage'
+import DocumentationPage from './pages/DocumentationPage'
+import DependencyGraphPage from './pages/DependencyGraphPage'
 
 import ProtectedRoute from './components/common/ProtectedRoute'
 import { AuthProvider } from './context/AuthContext'
@@ -44,6 +48,26 @@ function App() {
             <Route
               path="/dashboard/projects/:projectId/files"
               element={<FileExplorerPage />}
+            />
+
+            <Route
+              path="/dashboard/projects/:projectId/chat"
+              element={<CodebaseChatPage />}
+            />
+
+            <Route
+              path="/dashboard/projects/:projectId/architecture"
+              element={<ArchitecturePage />}
+            />
+
+            <Route
+              path="/dashboard/projects/:projectId/documentation"
+              element={<DocumentationPage />}
+            />
+
+            <Route
+              path="/dashboard/projects/:projectId/graph"
+              element={<DependencyGraphPage />}
             />
           </Route>
 

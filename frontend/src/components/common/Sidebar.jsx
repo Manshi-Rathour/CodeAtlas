@@ -2,13 +2,8 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
   FolderKanban,
-  GitBranch,
-  MessageSquare,
-  FileText,
-  Settings,
   LogOut,
   Network,
-  LockKeyhole,
 } from 'lucide-react'
 
 import useAuth from '../../hooks/useAuth'
@@ -18,6 +13,7 @@ function Sidebar() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
 
+  // Project tools are opened from the project tabs on each project page.
   const navigationItems = [
     {
       label: 'Overview',
@@ -30,21 +26,6 @@ function Sidebar() {
       path: '/dashboard/projects',
       icon: FolderKanban,
       available: true,
-    },
-    {
-      label: 'Dependency Graph',
-      icon: GitBranch,
-      available: false,
-    },
-    {
-      label: 'AI Code Chat',
-      icon: MessageSquare,
-      available: false,
-    },
-    {
-      label: 'Documentation',
-      icon: FileText,
-      available: false,
     },
   ]
 
@@ -92,7 +73,7 @@ function Sidebar() {
 
           return (
             <NavLink
-              key={item.path}
+              key={item.label}
               to={item.path}
               end={item.path === '/dashboard'}
               className={({ isActive }) =>
@@ -107,21 +88,6 @@ function Sidebar() {
       </nav>
 
       <div className="sidebar-bottom">
-        <div className="sidebar-section-label">
-          PREFERENCES
-        </div>
-
-        <div
-          className="sidebar-nav-link sidebar-nav-disabled"
-          aria-disabled="true"
-        >
-          <Settings size={19} />
-          <span>Settings</span>
-          <span className="sidebar-coming-soon">
-            Soon
-          </span>
-        </div>
-
         <div className="sidebar-user">
           <div className="sidebar-user-avatar">
             {user?.full_name?.charAt(0)?.toUpperCase() || 'U'}

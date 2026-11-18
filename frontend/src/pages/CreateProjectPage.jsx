@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Upload, Code2, GitBranch } from 'lucide-react'
 
 import Sidebar from '../components/common/Sidebar'
+import DashboardTopbar from '../components/common/DashboardTopbar'
 import ZipUpload from '../components/upload/ZipUpload'
 import GitHubImport from '../components/upload/GitHubImport'
 import ImportStatus from '../components/upload/ImportStatus'
@@ -25,11 +26,9 @@ function CreateProjectPage() {
       <Sidebar />
 
       <main className="dashboard-main create-project-main">
-        <header className="dashboard-topbar">
-          <div className="dashboard-breadcrumb">
-            Workspace <span>/</span> Import Project
-          </div>
-        </header>
+        <DashboardTopbar>
+          Workspace <span>/</span> Import Project
+        </DashboardTopbar>
 
         <div className="create-project-content">
           <button

@@ -44,6 +44,15 @@ const projectService = {
     return response.data
   },
 
+  // Fetch every project file so the explorer can build a folder tree.
+  getProjectFileTree: async (projectId, params = {}) => {
+    const response = await api.get(
+      `/api/projects/${projectId}/file-tree`,
+      { params }
+    )
+    return response.data
+  },
+
   // Retrieves the source code and metadata of a specific project file
   getProjectFileContent: async (projectId, fileId) => {
   const response = await api.get(

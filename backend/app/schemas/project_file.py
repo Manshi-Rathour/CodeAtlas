@@ -23,3 +23,10 @@ class ProjectFileListResponse(BaseModel):
     page_size: int
     total_pages: int
     files: list[ProjectFileResponse]
+
+
+class ProjectFileTreeResponse(BaseModel):
+    total: int
+    shown: int
+    truncated: bool
+    files: list[ProjectFileResponse]

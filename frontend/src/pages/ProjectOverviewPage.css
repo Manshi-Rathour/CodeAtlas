@@ -498,7 +498,7 @@
 
 .analysis-stats {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
   margin-bottom: 30px;
 }
@@ -711,5 +711,93 @@
   .analysis-item-meta {
     align-items: flex-start;
     flex-direction: column;
+  }
+}
+
+/* Detected technologies */
+
+.project-technologies {
+  margin-top: 25px;
+  margin-bottom: 24px;
+  padding: 21px 23px;
+  border: 1px solid #26364d;
+  border-radius: 15px;
+  background: #111c2e;
+}
+
+.project-technologies-heading h2 {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 5px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.project-technologies-heading h2 svg {
+  color: #22d3ee;
+}
+
+.project-technologies-heading p {
+  margin: 0 0 16px;
+  color: #718198;
+  font-size: 12px;
+}
+
+.project-technologies-empty {
+  margin: 0;
+  color: #718198;
+  font-size: 12.5px;
+  font-style: italic;
+}
+
+.project-technology-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.project-technology-group {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.project-technology-group > span {
+  width: 96px;
+  flex-shrink: 0;
+  padding-top: 4px;
+  color: #718198;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+.project-technology-group > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.project-technology-group b {
+  padding: 4px 10px;
+  border: 1px solid rgba(96, 165, 250, 0.2);
+  border-radius: 7px;
+  background: rgba(37, 131, 247, 0.08);
+  color: #bfdbfe;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .project-technology-group {
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .project-technology-group > span {
+    width: auto;
+    padding-top: 0;
   }
 }

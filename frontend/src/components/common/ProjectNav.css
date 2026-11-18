@@ -1,0 +1,66 @@
+.project-tools-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 26px;
+  padding: 6px;
+  overflow-x: auto;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 13px;
+  background: rgba(11, 18, 32, 0.86);
+  scrollbar-width: thin;
+}
+
+.project-tool-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 9px 14px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  color: #94a3b8;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: 0.2s ease;
+}
+
+.project-tool-tab svg {
+  color: #718198;
+  transition: color 0.2s ease;
+}
+
+.project-tool-tab:hover {
+  color: #e2e8f0;
+  background: rgba(96, 165, 250, 0.07);
+}
+
+.project-tool-tab:hover svg {
+  color: #60a5fa;
+}
+
+.project-tool-tab.active {
+  color: #dbeafe;
+  border-color: rgba(96, 165, 250, 0.22);
+  background: linear-gradient(
+    90deg,
+    rgba(37, 131, 247, 0.22),
+    rgba(34, 211, 238, 0.08)
+  );
+}
+
+.project-tool-tab.active svg {
+  color: #60a5fa;
+}
+
+@media (max-width: 760px) {
+  .project-tools-nav {
+    padding: 5px;
+  }
+
+  .project-tool-tab {
+    padding: 8px 11px;
+    font-size: 12px;
+  }
+}

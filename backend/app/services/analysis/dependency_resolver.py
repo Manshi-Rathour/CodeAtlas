@@ -25,6 +25,16 @@ C_LANGUAGES = {
     "cpp",
 }
 
+# Languages whose files reference other assets (CSS, JS, templates).
+MARKUP_LANGUAGES = {
+    "html",
+    "htm",
+}
+
+STYLESHEET_LANGUAGES = {
+    "css",
+}
+
 # Package prefixes that always refer to external platforms/libraries.
 JAVA_EXTERNAL_PREFIXES = (
     "java.",
@@ -494,6 +504,82 @@ def _ruby_candidates(
     return [name + ".rb", name]
 
 
+def _clean_asset_reference(dependency_name: str) -> str:
+    """Remove query strings and fragments from an asset reference."""
+
+    reference = (dependency_name or "").strip()
+
+    for separator in ("#", "?"):
+        if separator in reference:
+            reference = reference.split(separator, 1)[0]
+
+    return reference
+
+
+def _asset_candidates(
+    dependency_name: str,
+    source_path: PurePosixPath,
+) -> list[str]:
+    """
+    Build candidate project paths for an HTML/CSS/template reference.
+
+    References starting with "/" are project-root relative, everything
+    else is relative to the referencing file, matching browser and
+    template engine behaviour.
+    """
+
+    reference = _clean_asset_reference(dependency_name)
+
+    if not reference:
+        return []
+
+    if reference.startswith("/"):
+        base = _normalize_path(reference.lstrip("/"))
+    else:
+        base = _normalize_path(str(source_path.parent / reference))
+
+    if not base:
+        return []
+
+    return [base]
+
+
+def _resolve_markup(
+    dependency_name: str,
+    source_path: PurePosixPath,
+    index: _ProjectIndex,
+) -> int | None:
+    """
+    Resolve a stylesheet, script or template reference to a project file.
+    """
+
+    resolved_id = _first_match(
+        _asset_candidates(dependency_name, source_path),
+        index.files,
+        index.files_lower,
+    )
+
+    if resolved_id is not None:
+        return resolved_id
+
+    # Static folders and template roots are often not the project root,
+    # so fall back to the longest matching path suffix.
+    reference = _clean_asset_reference(dependency_name)
+
+    if reference.startswith("/"):
+        reference = reference.lstrip("/")
+
+    if not reference or reference.startswith(".."):
+        return None
+
+    normalized = _normalize_path(reference)
+
+    return (
+        index.path_suffixes.get(normalized)
+        or index.files_lower.get(normalized.lower())
+    )
+
+
 def _resolve_python(
     dependency_name: str,
     source_path: PurePosixPath,
@@ -755,6 +841,28 @@ def resolve_dependencies(
                 source_path,
                 index,
             )
+
+        elif language in MARKUP_LANGUAGES:
+            # Stylesheets, scripts and template includes.
+            if dependency_type in (
+                "stylesheet",
+                "script",
+                "template_include",
+                "template_extends",
+            ):
+                resolved_id = _resolve_markup(
+                    dependency_name,
+                    source_path,
+                    index,
+                )
+
+        elif language in STYLESHEET_LANGUAGES:
+            if dependency_type == "css_import":
+                resolved_id = _resolve_markup(
+                    dependency_name,
+                    source_path,
+                    index,
+                )
 
         if resolved_id is not None:
             dependency.resolved_file_id = resolved_id

@@ -4,8 +4,6 @@ import {
   ArrowLeft,
   Search,
   RefreshCw,
-  ChevronLeft,
-  ChevronRight,
   FolderOpen,
   LoaderCircle,
   AlertCircle,
@@ -13,6 +11,8 @@ import {
 } from 'lucide-react'
 
 import Sidebar from '../components/common/Sidebar'
+import DashboardTopbar from '../components/common/DashboardTopbar'
+import ProjectNav from '../components/common/ProjectNav'
 import FileTree from '../components/explorer/FileTree'
 import CodeViewer from '../components/explorer/CodeViewer'
 import projectService from '../services/projectService'
@@ -25,9 +25,6 @@ function FileExplorerPage() {
 
   const [project, setProject] = useState(null)
   const [fileData, setFileData] = useState(null)
-
-  const [page, setPage] = useState(1)
-  const [pageSize] = useState(50)
 
   const [searchInput, setSearchInput] = useState('')
   const [appliedSearch, setAppliedSearch] = useState('')
@@ -69,18 +66,19 @@ function FileExplorerPage() {
     }
   }, [projectId])
 
-  // Load the requested page of project files.
+  // Load the project's files and build the folder tree.
   const fetchFiles = useCallback(async () => {
     setIsLoading(true)
     setError('')
 
     try {
-      const response = await projectService.getProjectFiles(projectId, {
-        page,
-        page_size: pageSize,
-        ...(language ? { language } : {}),
-        ...(appliedSearch ? { search: appliedSearch } : {}),
-      })
+      const response = await projectService.getProjectFileTree(
+        projectId,
+        {
+          ...(language ? { language } : {}),
+          ...(appliedSearch ? { search: appliedSearch } : {}),
+        }
+      )
 
       setFileData(response)
     } catch (err) {
@@ -92,18 +90,18 @@ function FileExplorerPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [projectId, page, pageSize, language, appliedSearch])
+  }, [projectId, language, appliedSearch])
 
   useEffect(() => {
     fetchFiles()
   }, [fetchFiles])
 
-  // Clear the previous selection when filters or pages change.
+  // Clear the previous selection when filters change.
   useEffect(() => {
     setSelectedFile(null)
     setFileContent('')
     setContentError('')
-  }, [projectId, page, language, appliedSearch])
+  }, [projectId, language, appliedSearch])
 
   // Fetch source code for the selected file.
   useEffect(() => {
@@ -148,12 +146,10 @@ function FileExplorerPage() {
 
   const handleSearch = (event) => {
     event.preventDefault()
-    setPage(1)
     setAppliedSearch(searchInput.trim())
   }
 
   const handleLanguageChange = (event) => {
-    setPage(1)
     setLanguage(event.target.value)
   }
 
@@ -161,27 +157,24 @@ function FileExplorerPage() {
     setSearchInput('')
     setAppliedSearch('')
     setLanguage('')
-    setPage(1)
   }
 
   const handleSelectFile = (file) => {
     setSelectedFile(file)
   }
 
-  const totalPages = fileData?.total_pages ?? 0
   const totalFiles = fileData?.total ?? 0
+  const shownFiles = fileData?.shown ?? fileData?.files?.length ?? 0
 
   return (
     <div className="dashboard-layout">
       <Sidebar />
 
       <main className="dashboard-main file-explorer-main">
-        <header className="dashboard-topbar">
-          <div className="dashboard-breadcrumb">
-            Workspace <span>/</span> Projects <span>/</span>
-            {project?.name || 'Project'} <span>/</span> Files
-          </div>
-        </header>
+        <DashboardTopbar>
+          Workspace <span>/</span> Projects <span>/</span>
+          {project?.name || 'Project'} <span>/</span> Files
+        </DashboardTopbar>
 
         <div className="file-explorer-content">
           <button
@@ -191,6 +184,8 @@ function FileExplorerPage() {
             <ArrowLeft size={17} />
             Back to Project
           </button>
+
+          <ProjectNav projectId={projectId} />
 
           <section className="file-explorer-heading">
             <div>
@@ -239,7 +234,6 @@ function FileExplorerPage() {
                   type="button"
                   onClick={() => {
                     setSearchInput('')
-                    setPage(1)
                     setAppliedSearch('')
                   }}
                   title="Clear search"
@@ -288,9 +282,10 @@ function FileExplorerPage() {
               {totalFiles.toLocaleString('en-IN')} files found
             </span>
 
-            {fileData && (
-              <span>
-                Page {fileData.page} of {totalPages || 1}
+            {fileData?.truncated && (
+              <span className="file-explorer-truncated">
+                Showing the first {shownFiles.toLocaleString('en-IN')}
+                {' '}files. Narrow the search to see the rest.
               </span>
             )}
           </div>
@@ -331,33 +326,6 @@ function FileExplorerPage() {
                 />
               </div>
             </section>
-          )}
-
-          {!error && totalPages > 1 && (
-            <div className="file-explorer-pagination">
-              <button
-                onClick={() => setPage((current) => Math.max(1, current - 1))}
-                disabled={page <= 1 || isLoading}
-              >
-                <ChevronLeft size={17} />
-                Previous
-              </button>
-
-              <span>
-                Page <strong>{page}</strong> of{' '}
-                <strong>{totalPages}</strong>
-              </span>
-
-              <button
-                onClick={() =>
-                  setPage((current) => Math.min(totalPages, current + 1))
-                }
-                disabled={page >= totalPages || isLoading}
-              >
-                Next
-                <ChevronRight size={17} />
-              </button>
-            </div>
           )}
         </div>
       </main>

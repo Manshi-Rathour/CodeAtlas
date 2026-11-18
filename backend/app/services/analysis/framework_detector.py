@@ -106,12 +106,16 @@ DATABASE_RULES = {
     "PostgreSQL": [
         "psycopg",
         "psycopg2",
+        "asyncpg",
+        "pg",
         "pgx",
         "lib/pq",
+        "postgres",
         "postgresql",
     ],
     "MySQL": [
         "mysql",
+        "mysql2",
         "pymysql",
         "mysqlclient",
         "mysql.connector",
@@ -128,6 +132,7 @@ DATABASE_RULES = {
     ],
     "Redis": [
         "redis",
+        "ioredis",
         "go-redis",
     ],
 }
@@ -154,8 +159,16 @@ MANIFEST_FILES = {
 def normalize_dependency(name: str) -> str:
     """
     Normalize dependency names for comparison.
+
+    Package ecosystems use different separators for the same concept,
+    for example Cargo's "actix-web" crate and the "actix_web" module.
     """
-    return name.strip().lower().replace("\\", ".")
+    return (
+        name.strip()
+        .lower()
+        .replace("\\", ".")
+        .replace("-", "_")
+    )
 
 
 def matches_dependency(
@@ -163,8 +176,15 @@ def matches_dependency(
     patterns: list[str],
 ) -> bool:
     """
-    Match exact dependency names or their submodules.
+    Match exact dependency names, submodules and nested package paths.
+
+    Examples:
+    - "fastapi" matches the FastAPI rule.
+    - "fastapi.middleware" matches FastAPI.
+    - "github.com/lib/pq" matches the nested "lib/pq" rule.
+    - "psycopg2-binary" matches the "psycopg2" rule.
     """
+
     dependency = normalize_dependency(dependency_name)
 
     for pattern in patterns:
@@ -173,14 +193,14 @@ def matches_dependency(
         if dependency == normalized_pattern:
             return True
 
-        if dependency.startswith(normalized_pattern + "."):
-            return True
+        for separator in (".", "/", "::", "_"):
+            if dependency.startswith(normalized_pattern + separator):
+                return True
 
-        if dependency.startswith(normalized_pattern + "/"):
-            return True
-
-        if dependency.startswith(normalized_pattern + "::"):
-            return True
+        # Nested package paths such as "github.com/lib/pq".
+        if "/" in normalized_pattern:
+            if dependency.endswith("/" + normalized_pattern):
+                return True
 
     return False
 

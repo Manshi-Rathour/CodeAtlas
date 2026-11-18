@@ -11,7 +11,10 @@ from app.models.user import User
 from app.models.project import Project
 from app.models.project_file import ProjectFile
 
-from app.schemas.project_file import ProjectFileListResponse
+from app.schemas.project_file import (
+    ProjectFileListResponse,
+    ProjectFileTreeResponse,
+)
 
 from pathlib import Path
 
@@ -24,6 +27,67 @@ router = APIRouter(
     prefix="/api/projects",
     tags=["Project Files"]
 )
+
+# Upper bound for the folder tree payload. Keeps very large repositories
+# responsive in the browser while still showing the real structure.
+MAX_TREE_FILES = 2000
+
+
+def _owned_project(
+    db: Session,
+    project_id: int,
+    current_user: User,
+) -> Project:
+    """Return the project only when it belongs to the current user."""
+
+    project = db.query(Project).filter(
+        Project.id == project_id,
+        Project.owner_id == current_user.id
+    ).first()
+
+    if project is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found."
+        )
+
+    return project
+
+
+def _project_files_query(
+    db: Session,
+    project_id: int,
+    language: str | None = None,
+    search: str | None = None,
+):
+    """Build the filtered project file query used by list and tree views."""
+
+    files_query = db.query(ProjectFile).filter(
+        ProjectFile.project_id == project_id
+    )
+
+    if language:
+        files_query = files_query.filter(
+            func.lower(ProjectFile.language) == language.strip().lower()
+        )
+
+    if search:
+        search_term = search.strip()
+
+        files_query = files_query.filter(
+            or_(
+                ProjectFile.filename.ilike(
+                    f"%{search_term}%",
+                    escape="\\"
+                ),
+                ProjectFile.relative_path.ilike(
+                    f"%{search_term}%",
+                    escape="\\"
+                )
+            )
+        )
+
+    return files_query
 
 
 @router.get(
@@ -44,57 +108,26 @@ def get_project_files(
 ):
     # 1. Verify that the project belongs to the logged-in user.
 
-    project = db.query(Project).filter(
-        Project.id == project_id,
-        Project.owner_id == current_user.id
-    ).first()
+    _owned_project(db, project_id, current_user)
 
-    if project is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Project not found."
-        )
+    # 2. Build the filtered file query.
 
-    # 2. Start querying files belonging to this project.
-
-    files_query = db.query(ProjectFile).filter(
-        ProjectFile.project_id == project_id
+    files_query = _project_files_query(
+        db,
+        project_id,
+        language,
+        search,
     )
 
-    # 3. Apply language filter if provided.
-
-    if language:
-        files_query = files_query.filter(
-            func.lower(ProjectFile.language) == language.strip().lower()
-        )
-
-    # 4. Search by filename or relative path.
-
-    if search:
-        search_term = search.strip()
-
-        files_query = files_query.filter(
-            or_(
-                ProjectFile.filename.ilike(
-                    f"%{search_term}%",
-                    escape="\\"
-                ),
-                ProjectFile.relative_path.ilike(
-                    f"%{search_term}%",
-                    escape="\\"
-                )
-            )
-        )
-
-    # 5. Count matching files before pagination.
+    # 3. Count matching files before pagination.
 
     total_files = files_query.count()
 
-    # 6. Calculate pagination information.
+    # 4. Calculate pagination information.
 
     total_pages = ceil(total_files / page_size) if total_files else 0
 
-    # 7. Fetch only the requested page.
+    # 5. Fetch only the requested page.
 
     files = files_query.order_by(
         ProjectFile.relative_path.asc()
@@ -104,7 +137,7 @@ def get_project_files(
         page_size
     ).all()
 
-    # 8. Return the paginated response.
+    # 6. Return the paginated response.
 
     return {
         "total": total_files,
@@ -112,6 +145,57 @@ def get_project_files(
         "page_size": page_size,
         "total_pages": total_pages,
         "files": files
+    }
+
+
+@router.get(
+    "/{project_id}/file-tree",
+    response_model=ProjectFileTreeResponse
+)
+def get_project_file_tree(
+    project_id: int,
+
+    language: str | None = Query(default=None, min_length=1, max_length=100),
+    search: str | None = Query(default=None, min_length=1, max_length=200),
+
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Return every matching project file in one response.
+
+    The browser groups the flat paths into folders so the explorer can
+    show the real directory structure instead of a paginated file list.
+    """
+
+    # 1. Verify that the project belongs to the logged-in user.
+
+    _owned_project(db, project_id, current_user)
+
+    # 2. Build the filtered file query.
+
+    files_query = _project_files_query(
+        db,
+        project_id,
+        language,
+        search,
+    )
+
+    total_files = files_query.count()
+
+    # 3. Fetch the files, bounded so huge repositories stay responsive.
+
+    files = files_query.order_by(
+        ProjectFile.relative_path.asc()
+    ).limit(
+        MAX_TREE_FILES
+    ).all()
+
+    return {
+        "total": total_files,
+        "shown": len(files),
+        "truncated": total_files > len(files),
+        "files": files,
     }
 
 

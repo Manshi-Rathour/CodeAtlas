@@ -52,13 +52,11 @@ def analyze_project_architecture(
         .all()
     )
 
-    # Retrieve internal dependencies only
+    # Retrieve all dependencies, then use resolved ones for relationships.
     dependencies = (
         db.query(Dependency)
-        .filter(
-            Dependency.project_id == project_id,
-            Dependency.resolved_file_id.isnot(None),
-        )
+        .filter(Dependency.project_id == project_id)
+        .order_by(Dependency.id.asc())
         .all()
     )
 
@@ -93,6 +91,9 @@ def analyze_project_architecture(
     module_relationships = defaultdict(int)
 
     for dependency in dependencies:
+
+        if dependency.resolved_file_id is None:
+            continue
 
         source_file = file_lookup.get(dependency.file_id)
         target_file = file_lookup.get(dependency.resolved_file_id)
@@ -182,12 +183,33 @@ def analyze_project_architecture(
         in module_relationships.items()
     ]
 
+    # Summarize programming languages used across the project.
+    language_counts = defaultdict(int)
+
+    for project_file in files:
+        language = project_file.language or "Other"
+
+        if language in NON_PROGRAMMING_FILE_TYPES:
+            continue
+
+        language_counts[language] += 1
+
+    language_list = [
+        {
+            "language": language,
+            "file_count": count,
+        }
+        for language, count in sorted(language_counts.items())
+    ]
+
     return {
         "project_id": project_id,
         "project_name": project.name,
         "total_files": len(files),
         "total_symbols": len(symbols),
+        "total_dependencies": len(dependencies),
         "total_internal_dependencies": len(file_relationships),
+        "languages": language_list,
         "modules": module_list,
         "file_relationships": file_relationships,
         "module_relationships": module_relationship_list,

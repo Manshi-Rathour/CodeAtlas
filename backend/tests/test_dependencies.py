@@ -496,3 +496,213 @@ def test_leaves_external_ruby_require_unresolved():
     )
 
     assert resolved is None
+
+
+def test_extracts_html_asset_and_template_dependencies():
+    from app.services.analysis.parser_manager import analyze_file
+
+    source = """
+<html>
+  <head>
+    <link href="../static/style.css" rel="stylesheet">
+    <script src="../static/navbar.js"></script>
+    {% include 'navbar.html' %}
+  </head>
+</html>
+"""
+
+    result = analyze_file(source, "HTML")
+
+    found = {
+        (dependency["dependency_type"], dependency["dependency_name"])
+        for dependency in result["dependencies"]
+    }
+
+    assert found == {
+        ("stylesheet", "../static/style.css"),
+        ("script", "../static/navbar.js"),
+        ("template_include", "navbar.html"),
+    }
+
+
+def test_ignores_external_html_assets():
+    from app.services.analysis.parser_manager import analyze_file
+
+    source = """
+<link rel="stylesheet" href="https://cdn.example.com/app.css">
+<script src="//cdn.example.com/app.js"></script>
+"""
+
+    result = analyze_file(source, "HTML")
+
+    assert result["dependencies"] == []
+
+
+def test_extracts_css_import_dependencies():
+    from app.services.analysis.parser_manager import analyze_file
+
+    result = analyze_file('@import "theme.css";\n', "CSS")
+
+    assert result["dependencies"] == [
+        {
+            "dependency_name": "theme.css",
+            "dependency_type": "css_import",
+            "line_number": 1,
+            "imported_symbols": None,
+        }
+    ]
+
+
+def test_resolves_html_stylesheet_relative_to_page():
+    resolved = resolve_one(
+        "templates/index.html",
+        "../static/style.css",
+        ["static/style.css"],
+        "HTML",
+        dependency_type="stylesheet",
+    )
+
+    assert resolved == 1
+
+
+def test_resolves_html_root_relative_asset():
+    resolved = resolve_one(
+        "templates/gitabot.html",
+        "/static/gitabot.css",
+        ["static/gitabot.css"],
+        "HTML",
+        dependency_type="stylesheet",
+    )
+
+    assert resolved == 1
+
+
+def test_resolves_html_template_include():
+    resolved = resolve_one(
+        "templates/index.html",
+        "navbar.html",
+        ["templates/navbar.html"],
+        "HTML",
+        dependency_type="template_include",
+    )
+
+    assert resolved == 1
+
+
+def test_resolves_stylesheet_reference_with_query_string():
+    resolved = resolve_one(
+        "templates/index.html",
+        "../static/style.css?v=2",
+        ["static/style.css"],
+        "HTML",
+        dependency_type="stylesheet",
+    )
+
+    assert resolved == 1
+
+
+def test_leaves_missing_html_asset_unresolved():
+    resolved = resolve_one(
+        "templates/index.html",
+        "../static/missing.css",
+        ["static/style.css"],
+        "HTML",
+        dependency_type="stylesheet",
+    )
+
+    assert resolved is None
+
+
+def test_resolves_css_import_relative_to_stylesheet():
+    resolved = resolve_one(
+        "static/main.css",
+        "theme.css",
+        ["static/theme.css"],
+        "CSS",
+        dependency_type="css_import",
+    )
+
+    assert resolved == 1
+
+
+def test_analyze_project_links_html_to_stylesheet_and_script(
+    db_session,
+    tmp_path,
+):
+    """HTML asset references must appear as resolved project links."""
+
+    templates_dir = tmp_path / "templates"
+    static_dir = tmp_path / "static"
+    templates_dir.mkdir()
+    static_dir.mkdir()
+
+    (templates_dir / "index.html").write_text(
+        "<html><head>\n"
+        '<link href="../static/style.css" rel="stylesheet">\n'
+        '<script src="../static/app.js"></script>\n'
+        "</head></html>\n",
+        encoding="utf-8",
+    )
+    (static_dir / "style.css").write_text(
+        "body { color: #fff; }\n",
+        encoding="utf-8",
+    )
+    (static_dir / "app.js").write_text(
+        "console.log('ready');\n",
+        encoding="utf-8",
+    )
+
+    project = Project(
+        owner_id=1,
+        name="HTML Assets Test",
+        source_type="manual",
+        root_path=str(tmp_path),
+        status="ready",
+    )
+    db_session.add(project)
+    db_session.flush()
+
+    page = ProjectFile(
+        project_id=project.id,
+        filename="index.html",
+        relative_path="templates/index.html",
+        extension=".html",
+        language="HTML",
+        size_bytes=(templates_dir / "index.html").stat().st_size,
+    )
+    stylesheet = ProjectFile(
+        project_id=project.id,
+        filename="style.css",
+        relative_path="static/style.css",
+        extension=".css",
+        language="CSS",
+        size_bytes=(static_dir / "style.css").stat().st_size,
+    )
+    script = ProjectFile(
+        project_id=project.id,
+        filename="app.js",
+        relative_path="static/app.js",
+        extension=".js",
+        language="JavaScript",
+        size_bytes=(static_dir / "app.js").stat().st_size,
+    )
+
+    db_session.add_all([page, stylesheet, script])
+    db_session.flush()
+
+    result = analyze_project(db_session, project)
+
+    assert result["total_dependencies"] == 2
+    assert result["resolved_dependencies"] == 2
+
+    dependencies = {
+        dependency.dependency_name: dependency
+        for dependency in db_session.query(Dependency).filter(
+            Dependency.project_id == project.id
+        ).all()
+    }
+
+    assert dependencies["../static/style.css"].dependency_type == "stylesheet"
+    assert dependencies["../static/style.css"].resolved_file_id == stylesheet.id
+    assert dependencies["../static/app.js"].dependency_type == "script"
+    assert dependencies["../static/app.js"].resolved_file_id == script.id

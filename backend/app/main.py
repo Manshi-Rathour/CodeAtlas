@@ -14,6 +14,7 @@ from app.api.routes.files import router as files_router
 from app.api.routes.chat import router as chat_router
 from app.api.routes.documentation import router as documentation_router
 from app.api.routes.architecture import router as architecture_router
+from app.api.routes.graph import router as graph_router
 
 
 app = FastAPI(
@@ -47,6 +48,7 @@ app.include_router(files_router)
 app.include_router(chat_router)
 app.include_router(documentation_router)
 app.include_router(architecture_router)
+app.include_router(graph_router)
 
 
 # --------------------------------------------------

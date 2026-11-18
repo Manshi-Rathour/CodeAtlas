@@ -15,10 +15,13 @@ import {
   Code2,
   Braces,
   Layers,
-  Database,
+  Boxes,
 } from 'lucide-react'
 
 import Sidebar from '../components/common/Sidebar'
+import DashboardTopbar from '../components/common/DashboardTopbar'
+import ProjectNav from '../components/common/ProjectNav'
+import CollapsibleSection from '../components/common/CollapsibleSection'
 import projectService from '../services/projectService'
 import analysisService from '../services/analysisService'
 
@@ -108,7 +111,6 @@ function ProjectOverviewPage() {
   }
 
   const symbols = analysisData?.symbols || []
-  const chunks = analysisData?.chunks || []
   const dependencies = analysisData?.dependencies || []
 
   const functionCount = symbols.filter(
@@ -122,6 +124,19 @@ function ProjectOverviewPage() {
   const classCount = symbols.filter(
     (item) => item.type === 'class'
   ).length
+
+  const technologies = analysisData?.technologies || {}
+
+  const technologyGroups = [
+    { label: 'Languages', values: technologies.languages || [] },
+    { label: 'Frameworks', values: technologies.frameworks || [] },
+    { label: 'Libraries', values: technologies.libraries || [] },
+    { label: 'Databases', values: technologies.databases || [] },
+  ]
+
+  const hasTechnologies = technologyGroups.some(
+    (group) => group.values.length > 0
+  )
 
   if (isLoading) {
     return (
@@ -166,11 +181,9 @@ function ProjectOverviewPage() {
       <Sidebar />
 
       <main className="dashboard-main project-overview-main">
-        <header className="dashboard-topbar">
-          <div className="dashboard-breadcrumb">
-            Workspace <span>/</span> Projects <span>/</span> {project.name}
-          </div>
-        </header>
+        <DashboardTopbar>
+          Workspace <span>/</span> Projects <span>/</span> {project.name}
+        </DashboardTopbar>
 
         <div className="project-overview-content">
           <button
@@ -180,6 +193,8 @@ function ProjectOverviewPage() {
             <ArrowLeft size={17} />
             Back to Dashboard
           </button>
+
+          <ProjectNav projectId={projectId} />
 
           {/* Project information */}
           <section className="project-hero">
@@ -239,6 +254,49 @@ function ProjectOverviewPage() {
                 {getSourceLabel(project.source_type)}
               </strong>
             </div>
+          </section>
+
+          {/* Detected technologies */}
+          <section className="project-technologies">
+            <div className="project-technologies-heading">
+              <div>
+                <h2>
+                  <Boxes size={19} />
+                  Detected Technologies
+                </h2>
+                <p>
+                  Languages and libraries supported by manifests and
+                  analyzed imports
+                </p>
+              </div>
+            </div>
+
+            {!hasTechnologies ? (
+              <p className="project-technologies-empty">
+                {analysisData
+                  ? 'No frameworks, libraries or databases were detected in this project.'
+                  : 'Run analysis to detect the technologies used by this project.'}
+              </p>
+            ) : (
+              <div className="project-technology-groups">
+                {technologyGroups
+                  .filter((group) => group.values.length > 0)
+                  .map((group) => (
+                    <div
+                      className="project-technology-group"
+                      key={group.label}
+                    >
+                      <span>{group.label}</span>
+
+                      <div>
+                        {group.values.map((value) => (
+                          <b key={value}>{value}</b>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
           </section>
 
 
@@ -346,26 +404,17 @@ function ProjectOverviewPage() {
                 <span>Classes</span>
                 <strong>{classCount}</strong>
               </div>
-
-              <div className="analysis-stat-card">
-                <div className="analysis-stat-icon">
-                  <Database size={21} />
-                </div>
-                <span>Code Sections</span>
-                <strong>{analysisData?.total_chunks ?? 0}</strong>
-              </div>
             </div>
 
             {/* Extracted symbols */}
-            <div className="analysis-results">
-              <div className="analysis-results-heading">
-                <div>
-                  <h3>Functions &amp; Classes</h3>
-                  <p>Functions, methods, and classes discovered in your code</p>
-                </div>
-
-                <span>{symbols.length} found</span>
-              </div>
+            <CollapsibleSection
+              className="analysis-collapsible"
+              icon={Code2}
+              headingLevel="h3"
+              title="Functions & Classes"
+              subtitle="Functions, methods, and classes discovered in your code"
+              meta={`${symbols.length} found`}
+            >
 
               {symbols.length === 0 ? (
                 <div className="analysis-empty">
@@ -409,75 +458,17 @@ function ProjectOverviewPage() {
                   ))}
                 </div>
               )}
-            </div>
-
-            {/* Extracted code chunks */}
-            <div className="analysis-results">
-              <div className="analysis-results-heading">
-                <div>
-                  <h3>Code Sections</h3>
-                  <p>Structured HTML elements, CSS rules, and SQL statements</p>
-                </div>
-
-                <span>{chunks.length} found</span>
-              </div>
-
-              {chunks.length === 0 ? (
-                <div className="analysis-empty">
-                  No code sections found yet.
-                </div>
-              ) : (
-                <div className="analysis-list">
-                  {chunks.map((chunk) => (
-                    <div
-                      className="analysis-item"
-                      key={chunk.id}
-                    >
-                      <div className="analysis-item-main">
-                        <Database size={17} />
-
-                        <div>
-                          <strong>{chunk.name}</strong>
-                          <span>{chunk.file}</span>
-                        </div>
-                      </div>
-
-                      <div className="analysis-item-meta">
-                        <span className="analysis-type">
-                          {chunk.type}
-                        </span>
-
-                        <span>
-                          Lines {chunk.start_line}–{chunk.end_line}
-                        </span>
-                      </div>
-
-                      {chunk.content && (
-                        <details className="analysis-code-details">
-                          <summary>View content</summary>
-                          <pre>
-                            <code>{chunk.content}</code>
-                          </pre>
-                        </details>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
+            </CollapsibleSection>
 
             {/* Extracted dependencies */}
-            <div className="analysis-results">
-              <div className="analysis-results-heading">
-                <div>
-                  <h3>Dependencies</h3>
-                  <p>Libraries and modules imported by your project</p>
-                </div>
-
-                <span>{dependencies.length} dependencies</span>
-              </div>
-
+            <CollapsibleSection
+              className="analysis-collapsible"
+              icon={Braces}
+              headingLevel="h3"
+              title="Dependencies"
+              subtitle="Libraries and modules imported by your project"
+              meta={`${dependencies.length} dependencies`}
+            >
               {dependencies.length === 0 ? (
                 <div className="analysis-empty">
                   No dependencies found yet.
@@ -530,7 +521,7 @@ function ProjectOverviewPage() {
                   ))}
                 </div>
               )}
-            </div>
+            </CollapsibleSection>
 
           </section>
 

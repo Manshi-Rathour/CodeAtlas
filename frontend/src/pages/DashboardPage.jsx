@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 
 import Sidebar from '../components/common/Sidebar'
+import DashboardTopbar from '../components/common/DashboardTopbar'
 import StatCard from '../components/dashboard/StatCard'
 import ProjectCard from '../components/dashboard/ProjectCard'
 import projectService from '../services/projectService'
@@ -116,23 +117,11 @@ function DashboardPage() {
             <Sidebar />
 
             <main className="dashboard-main">
-                <header className="dashboard-topbar">
-                    <div className="dashboard-breadcrumb">
-                        <span>Workspace</span>
-                        <span className="breadcrumb-separator">/</span>
-                        <strong>Overview</strong>
-                    </div>
-
-                    <div className="dashboard-topbar-right">
-                        <span className="dashboard-user-email">
-                            {user?.email}
-                        </span>
-
-                        <div className="dashboard-topbar-avatar">
-                            {firstName.charAt(0).toUpperCase()}
-                        </div>
-                    </div>
-                </header>
+                <DashboardTopbar>
+                    <span>Workspace</span>
+                    <span className="breadcrumb-separator">/</span>
+                    <strong>Overview</strong>
+                </DashboardTopbar>
 
                 <div className="dashboard-content">
                     <section className="dashboard-welcome">
