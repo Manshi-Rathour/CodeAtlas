@@ -5,48 +5,66 @@ import ChatMessage from './ChatMessage'
 
 import './Chat.css'
 
+// A user is considered to be following the conversation when the chat
+// panel is this close to the bottom.
+const FOLLOW_THRESHOLD_PX = 80
+
 function ChatWindow({ messages, isLoading, emptyState }) {
   const windowRef = useRef(null)
-  const endRef = useRef(null)
+  const stickToBottomRef = useRef(true)
 
-  useEffect(() => {
-    if (endRef.current) {
-      endRef.current.scrollIntoView({
-        behavior: 'smooth',
-        block: 'end',
-      })
-    }
-  }, [messages, isLoading])
-
-  // Follow the answer while it is being revealed, but only when the
-  // user has not scrolled up to read earlier messages.
-  const handleTypingProgress = () => {
+  const scrollToBottom = () => {
     const container = windowRef.current
 
-    if (!container || !endRef.current) {
+    if (container) {
+      container.scrollTop = container.scrollHeight
+    }
+  }
+
+  // Only the chat panel scrolls; the page itself must never jump.
+  const handleScroll = () => {
+    const container = windowRef.current
+
+    if (!container) {
       return
     }
 
-    const nearBottom =
+    stickToBottomRef.current =
       container.scrollHeight -
         container.scrollTop -
         container.clientHeight <
-      160
+      FOLLOW_THRESHOLD_PX
+  }
 
-    if (nearBottom) {
-      endRef.current.scrollIntoView({
-        behavior: 'auto',
-        block: 'end',
-      })
+  // Follow the answer while it is being revealed, unless the user has
+  // scrolled up to read earlier messages.
+  const handleTypingProgress = () => {
+    if (stickToBottomRef.current) {
+      scrollToBottom()
     }
   }
+
+  useEffect(() => {
+    const lastMessage = messages[messages.length - 1]
+
+    // Always reveal the question the user just sent; otherwise follow
+    // only when the user is already at the bottom.
+    if (
+      !lastMessage ||
+      lastMessage.role === 'user' ||
+      stickToBottomRef.current
+    ) {
+      stickToBottomRef.current = true
+      scrollToBottom()
+    }
+  }, [messages, isLoading])
 
   if (messages.length === 0 && !isLoading) {
     return <div className="chat-window">{emptyState}</div>
   }
 
   return (
-    <div className="chat-window" ref={windowRef}>
+    <div className="chat-window" ref={windowRef} onScroll={handleScroll}>
       <div className="chat-messages">
         {messages.map((message, index) => (
           <ChatMessage
@@ -72,8 +90,6 @@ function ChatWindow({ messages, isLoading, emptyState }) {
             </div>
           </article>
         )}
-
-        <div ref={endRef} />
       </div>
     </div>
   )

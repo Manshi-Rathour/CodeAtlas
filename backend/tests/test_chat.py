@@ -396,3 +396,76 @@ def test_chat_requires_authentication(client, register_user, project_factory):
     )
 
     assert response.status_code == 401
+
+
+def test_client_generated_conversation_id_starts_one_conversation(
+    client,
+    register_user,
+    project_factory,
+    file_factory,
+    chunk_factory,
+    fake_ollama,
+    db_session,
+):
+    import uuid
+
+    user, headers, project = _create_chunked_project(
+        register_user,
+        project_factory,
+        file_factory,
+        chunk_factory,
+        "chat-client-id@example.com",
+    )
+
+    conversation_id = str(uuid.uuid4())
+
+    # The frontend sends the same ID again after a dropped response.
+    for question in ("Explain main.", "Explain main."):
+        response = client.post(
+            f"/api/projects/{project.id}/chat",
+            headers=headers,
+            json={
+                "question": question,
+                "conversation_id": conversation_id,
+            },
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.json()["conversation_id"] == conversation_id
+
+    conversations = client.get(
+        f"/api/projects/{project.id}/chats",
+        headers=headers,
+    ).json()
+
+    assert len(conversations) == 1
+    assert conversations[0]["conversation_id"] == conversation_id
+    assert conversations[0]["message_count"] == 4
+
+
+def test_unknown_non_uuid_conversation_id_returns_404(
+    client,
+    register_user,
+    project_factory,
+    file_factory,
+    chunk_factory,
+    fake_ollama,
+):
+    user, headers, project = _create_chunked_project(
+        register_user,
+        project_factory,
+        file_factory,
+        chunk_factory,
+        "chat-invalid-id@example.com",
+    )
+
+    response = client.post(
+        f"/api/projects/{project.id}/chat",
+        headers=headers,
+        json={
+            "question": "Explain main.",
+            "conversation_id": "not-a-conversation",
+        },
+    )
+
+    assert response.status_code == 404

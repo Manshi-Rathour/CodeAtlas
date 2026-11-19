@@ -15,6 +15,8 @@ from app.api.routes.chat import router as chat_router
 from app.api.routes.documentation import router as documentation_router
 from app.api.routes.architecture import router as architecture_router
 from app.api.routes.graph import router as graph_router
+from app.api.routes.apis import router as apis_router
+from app.api.routes.users import router as users_router
 
 
 app = FastAPI(
@@ -49,6 +51,8 @@ app.include_router(chat_router)
 app.include_router(documentation_router)
 app.include_router(architecture_router)
 app.include_router(graph_router)
+app.include_router(apis_router)
+app.include_router(users_router)
 
 
 # --------------------------------------------------

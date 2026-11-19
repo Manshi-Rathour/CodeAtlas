@@ -16,6 +16,11 @@ import {
   Braces,
   Layers,
   Boxes,
+  Files,
+  Network,
+  Route,
+  FileText,
+  MessagesSquare,
 } from 'lucide-react'
 
 import Sidebar from '../components/common/Sidebar'
@@ -137,6 +142,45 @@ function ProjectOverviewPage() {
   const hasTechnologies = technologyGroups.some(
     (group) => group.values.length > 0
   )
+
+  const projectTools = [
+    {
+      icon: Files,
+      title: 'File Explorer',
+      description: 'Browse files and read source code.',
+      path: 'files',
+    },
+    {
+      icon: Network,
+      title: 'Architecture',
+      description: 'Structure, modules and AI explanations.',
+      path: 'architecture',
+    },
+    {
+      icon: Route,
+      title: 'APIs & Metrics',
+      description: 'Detected routes plus analysis metrics.',
+      path: 'apis',
+    },
+    {
+      icon: Braces,
+      title: 'Dependencies',
+      description: 'Internal imports as a directed graph.',
+      path: 'graph',
+    },
+    {
+      icon: MessagesSquare,
+      title: 'Codebase Chat',
+      description: 'Ask questions about this project.',
+      path: 'chat',
+    },
+    {
+      icon: FileText,
+      title: 'Documentation',
+      description: 'Generate setup and usage guides.',
+      path: 'documentation',
+    },
+  ]
 
   if (isLoading) {
     return (
@@ -319,6 +363,41 @@ function ProjectOverviewPage() {
               Open File Explorer
               <ExternalLink size={15} />
             </button>
+          </section>
+
+          {/* Project tools */}
+          <section className="project-tools-section">
+            <div className="project-tools-heading">
+              <h2>Project tools</h2>
+              <p>
+                Everything CodeAtlas has analyzed for this project.
+              </p>
+            </div>
+
+            <div className="project-tools-grid">
+              {projectTools.map((tool) => (
+                <button
+                  className="project-tool-card"
+                  key={tool.path}
+                  onClick={() =>
+                    navigate(
+                      `/dashboard/projects/${project.id}/${tool.path}`
+                    )
+                  }
+                >
+                  <span className="project-tool-icon">
+                    <tool.icon size={19} />
+                  </span>
+
+                  <span className="project-tool-text">
+                    <strong>{tool.title}</strong>
+                    <small>{tool.description}</small>
+                  </span>
+
+                  <ExternalLink size={14} className="project-tool-arrow" />
+                </button>
+              ))}
+            </div>
           </section>
 
           {/* GitHub repository */}

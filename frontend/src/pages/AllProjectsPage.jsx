@@ -38,30 +38,9 @@ function AllProjectsPage() {
       setIsLoading(true)
       setError('')
 
-      const projectData = await projectService.getProjects()
+      const projectData = await projectService.getProjectSummaries()
 
-      const projectsWithFiles = await Promise.all(
-        projectData.map(async (project) => {
-          try {
-            const fileData = await projectService.getProjectFiles(
-              project.id,
-              { page: 1, page_size: 1 }
-            )
-
-            return {
-              ...project,
-              total_files: fileData.total ?? 0,
-            }
-          } catch {
-            return {
-              ...project,
-              total_files: 0,
-            }
-          }
-        })
-      )
-
-      setProjects(projectsWithFiles)
+      setProjects(projectData)
     } catch (err) {
       console.error('Projects loading error:', err)
 

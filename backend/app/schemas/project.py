@@ -57,3 +57,8 @@ class ProjectResponse(BaseModel):
     model_config = ConfigDict(
         from_attributes=True
     )
+
+
+# Schema used by the dashboard summary endpoint
+class ProjectSummaryResponse(ProjectResponse):
+    total_files: int = 0

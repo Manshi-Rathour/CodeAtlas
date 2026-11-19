@@ -8,6 +8,12 @@ const projectService = {
     return response.data
   },
 
+  // Fetch projects with file counts in one request (dashboard).
+  getProjectSummaries: async () => {
+    const response = await api.get('/api/projects/summary')
+    return response.data
+  },
+
   // Fetch a particular project.
   getProject: async (projectId) => {
     const response = await api.get(`/api/projects/${projectId}`)

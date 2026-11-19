@@ -43,6 +43,7 @@ function ChatMessage({ message, onTypingProgress }) {
       shown = Math.min(shown + step, fullContent.length)
       setVisibleLength(shown)
 
+      // Keep the chat panel following the revealed text.
       if (progressRef.current) {
         progressRef.current()
       }

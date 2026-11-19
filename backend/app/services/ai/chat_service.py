@@ -122,7 +122,22 @@ async def process_chat_message(
         ).first()
 
         if not existing_message:
-            raise ValueError("Conversation not found.")
+            # A client may supply the ID for its first message so a retry
+            # reuses the same conversation. IDs that already belong to
+            # another project or user must never be taken over.
+            id_in_use = db.query(Chat.id).filter(
+                Chat.conversation_id == conversation_id,
+            ).first()
+
+            if id_in_use:
+                raise ValueError("Conversation not found.")
+
+            try:
+                parsed_id = uuid.UUID(conversation_id)
+            except (AttributeError, TypeError, ValueError):
+                raise ValueError("Conversation not found.")
+
+            conversation_id = str(parsed_id)
 
     try:
 

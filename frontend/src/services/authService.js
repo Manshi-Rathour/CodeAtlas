@@ -30,6 +30,28 @@ const authService = {
     return response.data
   },
 
+  // Update the signed-in user's profile details
+  updateProfile: async (profileData) => {
+    const response = await api.patch('/api/users/me', profileData)
+    return response.data
+  },
+
+  // Change password without email verification
+  changePassword: async (passwordData) => {
+    const response = await api.post(
+      '/api/users/me/password',
+      passwordData
+    )
+
+    return response.data
+  },
+
+  // Permanently delete the signed-in user's account
+  deleteAccount: async () => {
+    const response = await api.delete('/api/users/me')
+    return response.data
+  },
+
   // Logout the user
   logout: () => {
     localStorage.removeItem('access_token')

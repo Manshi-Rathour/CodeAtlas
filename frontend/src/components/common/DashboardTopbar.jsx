@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom'
+
 import useAuth from '../../hooks/useAuth'
 
 import './DashboardTopbar.css'
@@ -11,18 +13,22 @@ function DashboardTopbar({ children }) {
     <header className="dashboard-topbar">
       <div className="dashboard-breadcrumb">{children}</div>
 
-      <div className="dashboard-topbar-right">
+      <Link
+        to="/dashboard/profile"
+        className="dashboard-topbar-right"
+        title="Open your profile"
+      >
         <span className="dashboard-user-email">
           {user?.email || ''}
         </span>
 
-        <div
+        <span
           className="dashboard-topbar-avatar"
           title={user?.full_name || 'Signed-in user'}
         >
           {firstName.charAt(0).toUpperCase()}
-        </div>
-      </div>
+        </span>
+      </Link>
     </header>
   )
 }

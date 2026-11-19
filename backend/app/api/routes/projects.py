@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.database.connection import get_db
@@ -7,7 +8,8 @@ from app.models.project import Project
 from app.schemas.project import (
     ProjectCreate,
     ProjectUpdate,
-    ProjectResponse
+    ProjectResponse,
+    ProjectSummaryResponse,
 )
 from app.api.dependencies import get_current_user
 from app.services.analysis.analysis_service import analyze_project
@@ -16,6 +18,7 @@ from app.models.code_chunk import CodeChunk
 from app.models.project_file import ProjectFile
 from app.models.dependency import Dependency
 from app.services.analysis.framework_detector import detect_project_technologies
+from app.services.source.storage_service import remove_project_storage
 
 
 router = APIRouter(
@@ -83,6 +86,49 @@ def get_projects(
     ).all()
 
     return projects
+
+
+# --------------------------------------------------
+# 2b. GET PROJECT SUMMARIES WITH FILE COUNTS
+# --------------------------------------------------
+
+@router.get(
+    "/summary",
+    response_model=list[ProjectSummaryResponse]
+)
+def get_project_summaries(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Return every project with its file count in one query.
+
+    The dashboard otherwise needs one request per project just to
+    display the number of imported files.
+    """
+
+    rows = (
+        db.query(
+            Project,
+            func.count(ProjectFile.id).label("total_files"),
+        )
+        .outerjoin(
+            ProjectFile,
+            ProjectFile.project_id == Project.id,
+        )
+        .filter(Project.owner_id == current_user.id)
+        .group_by(Project.id)
+        .order_by(Project.created_at.desc())
+        .all()
+    )
+
+    return [
+        {
+            **ProjectResponse.model_validate(project).model_dump(),
+            "total_files": total_files,
+        }
+        for project, total_files in rows
+    ]
 
 
 # --------------------------------------------------
@@ -194,6 +240,11 @@ def delete_project(
 
     db.delete(project)
     db.commit()
+
+    remove_project_storage(
+        project.root_path,
+        current_user.id,
+    )
 
     return {
         "message": "Project deleted successfully.",

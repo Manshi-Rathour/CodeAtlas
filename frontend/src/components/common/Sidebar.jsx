@@ -88,7 +88,11 @@ function Sidebar() {
       </nav>
 
       <div className="sidebar-bottom">
-        <div className="sidebar-user">
+        <NavLink
+          to="/dashboard/profile"
+          className="sidebar-user"
+          title="Open your profile"
+        >
           <div className="sidebar-user-avatar">
             {user?.full_name?.charAt(0)?.toUpperCase() || 'U'}
           </div>
@@ -97,7 +101,7 @@ function Sidebar() {
             <strong>{user?.full_name || 'User'}</strong>
             <span>{user?.email || 'Welcome to CodeAtlas'}</span>
           </div>
-        </div>
+        </NavLink>
 
         <button
           className="sidebar-logout-button"

@@ -26,6 +26,10 @@ import ErrorMessage from '../components/common/ErrorMessage'
 import EmptyState from '../components/common/EmptyState'
 
 import architectureService from '../services/architectureService'
+import {
+  getCachedExplanation,
+  setCachedExplanation,
+} from '../utils/architectureExplanationCache'
 
 import './ArchitecturePage.css'
 
@@ -50,7 +54,15 @@ function ArchitecturePage() {
         false
       )
 
-      setArchitecture(response)
+      // Refreshing statistics must not discard an explanation that was
+      // already generated for this project.
+      setArchitecture({
+        ...response,
+        ai_explanation:
+          getCachedExplanation(projectId) ||
+          response.ai_explanation ||
+          null,
+      })
     } catch (err) {
       setError(
         err.response?.data?.detail ||
@@ -76,7 +88,17 @@ function ArchitecturePage() {
         true
       )
 
-      setArchitecture(response)
+      const explanation =
+        response.ai_explanation || getCachedExplanation(projectId)
+
+      if (response.ai_explanation) {
+        setCachedExplanation(projectId, response.ai_explanation)
+      }
+
+      setArchitecture({
+        ...response,
+        ai_explanation: explanation,
+      })
     } catch (err) {
       setExplanationError(
         err.response?.data?.detail ||

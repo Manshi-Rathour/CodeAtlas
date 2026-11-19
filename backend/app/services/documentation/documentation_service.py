@@ -15,9 +15,12 @@ from app.services.ai.ollama_service import ollama_service
 from app.services.analysis.framework_detector import (
     detect_project_technologies,
 )
+from app.services.analysis.api_detector import (
+    detect_project_api_endpoints,
+)
 
 
-MAX_CONTEXT_CHARS = 20000
+MAX_CONTEXT_CHARS = 26000
 MAX_SYMBOLS = 40
 MAX_CHUNKS = 30
 
@@ -43,6 +46,27 @@ MARKDOWN_AUTOLINK_PATTERN = re.compile(
 )
 
 MULTIPLE_BLANK_LINES_PATTERN = re.compile(r"\n{3,}")
+
+MARKDOWN_HEADING_LINE_PATTERN = re.compile(
+    r"^(?P<hashes>#{1,6})[ \t]+(?P<title>.+?)[ \t]*#*[ \t]*$"
+)
+
+FENCE_LINE_PATTERN = re.compile(r"^[ \t]*(`{3,}|~{3,})")
+
+# Sections that do not belong in generated project documentation. The
+# prompt asks the model to omit them; this removes leftovers from older
+# records or occasional model drift.
+UNWANTED_SECTION_TITLES = {
+    "license",
+    "licence",
+    "licensing",
+    "contributing",
+    "contributions",
+    "acknowledgements",
+    "acknowledgments",
+    "acknowledgement",
+    "acknowledgment",
+}
 
 # Files that describe how to install, configure, run or deploy a project.
 SETUP_FILE_NAMES = {
@@ -82,16 +106,74 @@ README_FILE_NAMES = {
     "readme",
 }
 
-MAX_SETUP_FILE_CHARS = 2200
-MAX_SETUP_TOTAL_CHARS = 7000
+MAX_SETUP_FILE_CHARS = 8000
+MAX_SETUP_TOTAL_CHARS = 16000
+
+
+def _normalize_heading_title(title: str) -> str:
+    """Reduce a heading to a comparable plain-text title."""
+
+    cleaned = title.replace("*", "").replace("_", "").replace("`", "")
+    cleaned = re.sub(r"^[0-9]+[.)]\s*", "", cleaned.strip())
+    cleaned = cleaned.strip(" :#-")
+
+    return cleaned.casefold()
+
+
+def remove_unwanted_sections(content: str) -> str:
+    """
+    Drop trailing boilerplate sections such as License or Contributing.
+
+    A section is removed from its heading until the next heading of the
+    same or a higher level. Fenced code blocks are never treated as
+    headings.
+    """
+
+    lines = content.splitlines()
+    kept: list[str] = []
+    skip_level = 0
+    fence: str | None = None
+
+    for line in lines:
+        fence_match = FENCE_LINE_PATTERN.match(line)
+
+        if fence_match:
+            marker = fence_match.group(1)
+
+            if fence is None:
+                fence = marker
+            elif marker[0] == fence[0] and len(marker) >= len(fence):
+                fence = None
+
+        if fence is None:
+            heading_match = MARKDOWN_HEADING_LINE_PATTERN.match(line)
+
+            if heading_match:
+                level = len(heading_match.group("hashes"))
+                title = _normalize_heading_title(
+                    heading_match.group("title")
+                )
+
+                if skip_level and level <= skip_level:
+                    skip_level = 0
+
+                if not skip_level and title in UNWANTED_SECTION_TITLES:
+                    skip_level = level
+                    continue
+
+        if not skip_level:
+            kept.append(line)
+
+    return "\n".join(kept)
 
 
 def sanitize_documentation(content: str) -> str:
     """
-    Remove Markdown links from generated documentation.
+    Make generated documentation safe to render inside the app.
 
-    Relative links cannot resolve inside the app, so link labels are
-    kept as plain text and images are dropped. Code blocks and inline
+    Markdown links are reduced to their labels because relative links
+    would navigate to the wrong page, images are dropped, and boilerplate
+    License/Contributing sections are removed. Code blocks and inline
     code are preserved because setup commands are useful.
     """
 
@@ -112,6 +194,7 @@ def sanitize_documentation(content: str) -> str:
         lambda match: match.group("url"),
         cleaned,
     )
+    cleaned = remove_unwanted_sections(cleaned)
     cleaned = MULTIPLE_BLANK_LINES_PATTERN.sub("\n\n", cleaned)
 
     return cleaned.strip()
@@ -213,6 +296,7 @@ def build_documentation_context(
     dependencies: list[Dependency],
     technologies: dict,
     setup_files: list[dict] | None = None,
+    api_endpoints: list[dict] | None = None,
 ) -> str:
     """
     Build a limited context containing project information,
@@ -278,6 +362,26 @@ Libraries: {technologies.get("libraries", [])}
 Databases: {technologies.get("databases", [])}
 """
     )
+
+    # Detected API endpoints
+    if api_endpoints:
+        endpoint_lines = [
+            (
+                f"- {endpoint['method']} {endpoint['path']} "
+                f"({endpoint['framework']}) in {endpoint['file']} "
+                f"line {endpoint['line']}"
+            )
+            for endpoint in api_endpoints[:80]
+        ]
+
+        context_parts.append(
+            """
+DETECTED API ENDPOINTS
+----------------------
+These routes were detected in the project source code.
+"""
+            + "\n".join(endpoint_lines)
+        )
 
     # Installation, configuration and deployment files
     if setup_files:
@@ -478,6 +582,12 @@ async def generate_project_documentation(
         # document real setup commands instead of inventing them.
         setup_files = collect_setup_files(project, files)
 
+        # Ground the API documentation in routes found in the source code.
+        api_result = detect_project_api_endpoints(
+            db=db,
+            project_id=project_id,
+        )
+
         # Build the AI context
         project_context = build_documentation_context(
             project=project,
@@ -487,6 +597,7 @@ async def generate_project_documentation(
             dependencies=dependencies,
             technologies=technologies,
             setup_files=setup_files,
+            api_endpoints=api_result["endpoints"],
         )
 
         system_prompt = """
@@ -519,6 +630,9 @@ async def generate_project_documentation(
            Explain the detected languages, frameworks, libraries and databases.
            Do not describe a technology as actively used unless the context
            provides supporting evidence.
+           The primary web framework must be the one named under
+           "Frameworks" in DETECTED TECHNOLOGIES. A package that merely
+           appears in requirements.txt or package.json is not the framework.
 
         6. INSTALLATION:
            This section is important.
@@ -530,6 +644,9 @@ async def generate_project_documentation(
            If package.json is present, explain the available package manager
            commands only when supported by its contents.
            Do not invent commands.
+           Never include clone URLs containing placeholder names such as
+           "yourusername", "your-org" or "example". Use the repository URL
+           from PROJECT INFORMATION only when it is present.
 
         7. CONFIGURATION:
            Identify actual configuration files and environment variables
@@ -542,8 +659,10 @@ async def generate_project_documentation(
 
         8. RUNNING THE APPLICATION:
            Explain how to start the application.
-           Provide exact commands based on the README, manifests,
-           Docker configuration or actual project setup files.
+           Copy the documented start command exactly. If the README says
+           `python app.py`, use that command and do not replace it with a
+           different runner. Provide exact commands based on the README,
+           manifests, Docker configuration or actual project setup files.
            Identify the actual entry point when known.
            Mention ports and browser URLs only when supported by evidence.
 

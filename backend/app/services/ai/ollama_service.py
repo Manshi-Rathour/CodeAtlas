@@ -48,7 +48,12 @@ class OllamaService:
         payload = {
             "model": self.model,
             "prompt": prompt,
-            "stream": False
+            "stream": False,
+            "options": {
+                "num_ctx": 16384,
+                "temperature": 0.2,
+                "top_p": 0.9,
+            },
         }
 
         if system_prompt:

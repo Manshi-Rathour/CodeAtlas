@@ -343,3 +343,40 @@ def test_file_tree_rejects_another_users_project(
     )
 
     assert response.status_code == 404
+
+
+def test_project_summaries_return_file_counts(
+    client,
+    db_session,
+    tmp_path,
+):
+    token = create_test_user(client, "summaries@example.com")
+    project_id = create_test_project(client, token, "Summary Project")
+
+    add_test_file(db_session, project_id, tmp_path, filename="app.py")
+    add_test_file(
+        db_session,
+        project_id,
+        tmp_path,
+        filename="static/style.css",
+    )
+
+    other_project_id = create_test_project(
+        client,
+        token,
+        "Empty Summary Project",
+    )
+
+    response = client.get(
+        "/api/projects/summary",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200, response.text
+
+    summaries = {
+        project["id"]: project for project in response.json()
+    }
+
+    assert summaries[project_id]["total_files"] == 2
+    assert summaries[other_project_id]["total_files"] == 0

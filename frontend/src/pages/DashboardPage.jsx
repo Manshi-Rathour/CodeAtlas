@@ -52,35 +52,13 @@ function DashboardPage() {
             setIsLoading(true)
             setError('')
 
-            // Fetch all projects belonging to the logged-in user.
-            const projectData = await projectService.getProjects()
+            // Fetch all projects with file counts in one request.
+            const projectData = await projectService.getProjectSummaries()
 
-            // Fetch file counts for each project.
-            const projectsWithFiles = await Promise.all(
-                projectData.map(async (project) => {
-                    try {
-                        const fileData = await projectService.getProjectFiles(
-                            project.id,
-                            { page: 1, page_size: 1 }
-                        )
+            setProjects(projectData)
 
-                        return {
-                            ...project,
-                            total_files: fileData.total ?? 0,
-                        }
-                    } catch {
-                        return {
-                            ...project,
-                            total_files: 0,
-                        }
-                    }
-                })
-            )
-
-            setProjects(projectsWithFiles)
-
-            const fileCount = projectsWithFiles.reduce(
-                (total, project) => total + project.total_files,
+            const fileCount = projectData.reduce(
+                (total, project) => total + (project.total_files || 0),
                 0
             )
 

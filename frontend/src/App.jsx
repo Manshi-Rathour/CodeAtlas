@@ -6,12 +6,14 @@ import SignupPage from './pages/SignupPage'
 import DashboardPage from './pages/DashboardPage'
 import AllProjectsPage from './pages/AllProjectsPage'
 import CreateProjectPage from './pages/CreateProjectPage'
+import ProfilePage from './pages/ProfilePage'
 import ProjectOverviewPage from './pages/ProjectOverviewPage'
 import FileExplorerPage from './pages/FileExplorerPage'
 import CodebaseChatPage from './pages/CodebaseChatPage'
 import ArchitecturePage from './pages/ArchitecturePage'
 import DocumentationPage from './pages/DocumentationPage'
 import DependencyGraphPage from './pages/DependencyGraphPage'
+import ApiExplorerPage from './pages/ApiExplorerPage'
 
 import ProtectedRoute from './components/common/ProtectedRoute'
 import { AuthProvider } from './context/AuthContext'
@@ -29,6 +31,11 @@ function App() {
           {/* Protected routes */}
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<DashboardPage />} />
+
+            <Route
+              path="/dashboard/profile"
+              element={<ProfilePage />}
+            />
 
             <Route
               path="/dashboard/projects"
@@ -68,6 +75,11 @@ function App() {
             <Route
               path="/dashboard/projects/:projectId/graph"
               element={<DependencyGraphPage />}
+            />
+
+            <Route
+              path="/dashboard/projects/:projectId/apis"
+              element={<ApiExplorerPage />}
             />
           </Route>
 

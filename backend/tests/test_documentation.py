@@ -347,7 +347,7 @@ def test_documentation_returns_503_for_empty_ai_response(
     assert response.status_code == 503
 
 
-def test_documentation_removes_code_examples(
+def test_documentation_keeps_setup_code_blocks_and_removes_links(
     client,
     register_user,
     project_factory,
@@ -365,35 +365,37 @@ def test_documentation_removes_code_examples(
         symbol_factory,
         chunk_factory,
         dependency_factory,
-        "documentation-code-examples@example.com",
+        "documentation-setup-code@example.com",
     )
 
     captured = {}
 
-    async def generate_with_code(prompt, system_prompt=None):
+    async def generate_with_setup(prompt, system_prompt=None):
         captured["system_prompt"] = system_prompt
 
         return (
             "# Project Overview\n"
             "This project greets users.\n\n"
-            "## Code Examples\n"
-            "```python\n"
-            "def main():\n"
-            "    return helper()\n"
+            "## Installation\n"
+            "Install the dependencies from "
+            "[requirements.txt](requirements.txt).\n\n"
+            "```bash\n"
+            "pip install -r requirements.txt\n"
             "```\n\n"
-            "## Important Classes and Functions\n"
-            "`main` in `src/main.py` delegates to the helper.\n\n"
-            "```js\n"
-            "console.log('example')\n"
-            "```\n\n"
-            "## Dependencies\n"
-            "The project imports the helpers module.\n"
+            "More details live at <https://example.com/setup>.\n\n"
+            "![Screenshot](docs/screenshot.png)\n\n"
+            "## Running the Application\n"
+            "Start the server with `python app.py`.\n\n"
+            "## License\n"
+            "This project is licensed under the MIT License.\n\n"
+            "## Contributing\n"
+            "Read CONTRIBUTING.md first.\n"
         )
 
     monkeypatch.setattr(
         documentation_service.ollama_service,
         "generate_response",
-        generate_with_code,
+        generate_with_setup,
     )
 
     response = client.post(
@@ -405,16 +407,24 @@ def test_documentation_removes_code_examples(
 
     content = response.json()["content"]
 
-    assert "# Project Overview" in content
-    assert "## Important Classes and Functions" in content
-    assert "## Dependencies" in content
-    assert "`main` in `src/main.py`" in content
+    # Setup commands are preserved in fenced code blocks.
+    assert "```bash" in content
+    assert "pip install -r requirements.txt" in content
+    assert "`python app.py`" in content
 
-    # No fenced code blocks and no code example section.
-    assert "```" not in content
-    assert "Code Examples" not in content
-    assert "def main()" not in content
-    assert "console.log" not in content
+    # Links become plain text and images are dropped.
+    assert "](requirements.txt)" not in content
+    assert "requirements.txt)." not in content
+    assert "Install the dependencies from requirements.txt." in content
+    assert "https://example.com/setup" in content
+    assert "![Screenshot]" not in content
+    assert "docs/screenshot.png" not in content
+
+    # Boilerplate sections are removed.
+    assert "## License" not in content
+    assert "MIT License" not in content
+    assert "## Contributing" not in content
+    assert "CONTRIBUTING.md" not in content
 
     stored = (
         db_session.query(Documentation)
@@ -426,8 +436,8 @@ def test_documentation_removes_code_examples(
 
     system_prompt = captured["system_prompt"].lower()
 
-    assert "code examples" in system_prompt
-    assert "fenced code" in system_prompt
+    assert "fenced code blocks" in system_prompt
+    assert "markdown links" in system_prompt
 
 
 def test_legacy_documentation_is_sanitized_on_read(
@@ -454,14 +464,16 @@ def test_legacy_documentation_is_sanitized_on_read(
         project_id=project.id,
         content=(
             "# Project Overview\n"
-            "Uses `src/main.py`.\n\n"
-            "## Code Examples\n"
-            "An old code example.\n\n"
-            "```python\n"
-            "print('legacy')\n"
+            "Uses `src/main.py` as documented in "
+            "[the guide](https://example.com/guide).\n\n"
+            "## Installation\n"
+            "```bash\n"
+            "pip install -r requirements.txt\n"
             "```\n\n"
             "## Notes\n"
-            "Keep this paragraph.\n"
+            "Keep this paragraph.\n\n"
+            "## License\n"
+            "Old license text.\n"
         ),
     )
 
@@ -477,43 +489,109 @@ def test_legacy_documentation_is_sanitized_on_read(
 
     content = response.json()["content"]
 
-    assert "Uses `src/main.py`." in content
+    assert "Uses `src/main.py`" in content
+    assert "the guide" in content
+    assert "](https://example.com/guide)" not in content
     assert "Keep this paragraph." in content
-    assert "Code Examples" not in content
-    assert "code example" not in content.lower()
-    assert "legacy" not in content
-    assert "```" not in content
+    assert "```bash" in content
+    assert "pip install -r requirements.txt" in content
+    assert "## License" not in content
+    assert "Old license text." not in content
 
     # The stored record is left untouched; only the response is clean.
     db_session.refresh(legacy)
-    assert "```" in legacy.content
+    assert "## License" in legacy.content
 
 
-def test_remove_code_examples_keeps_prose_and_inline_code():
-    cleaned = documentation_service.remove_code_examples(
+def test_sanitize_documentation_keeps_code_and_strips_links():
+    cleaned = documentation_service.sanitize_documentation(
         "# Overview\n"
         "Uses `src/main.py` as the entry point.\n\n"
         "- [Overview](#overview)\n"
-        "- [Code Examples](#code-examples)\n"
-        "3. **Code Examples**\n"
-        "- [Structure](#structure)\n\n"
-        "## Example Usage\n"
-        "Run the app after installing dependencies.\n\n"
-        "## Structure\n"
-        "```text\nsrc/main.py\n```\n"
-        "The `src` directory holds the code.\n"
-        "This guide includes code examples.\n"
+        "- [Structure](docs/structure.md)\n\n"
+        "## Installation\n"
+        "```bash\n"
+        "pip install -r requirements.txt\n"
+        "```\n"
+        "The `src` directory holds the code.\n\n"
+        "## Contributing\n"
+        "Open a pull request.\n"
     )
 
     assert "Uses `src/main.py`" in cleaned
-    assert "[Overview](#overview)" in cleaned
-    assert "[Structure](#structure)" in cleaned
+    assert "- Overview" in cleaned
+    assert "- Structure" in cleaned
+    assert "](" not in cleaned
+    assert "```bash" in cleaned
+    assert "pip install -r requirements.txt" in cleaned
     assert "The `src` directory holds the code." in cleaned
-    assert "This guide includes" not in cleaned
-    assert "Example Usage" not in cleaned
-    assert "Code Examples" not in cleaned
-    assert "```" not in cleaned
-    assert "src/main.py\n```" not in cleaned
+    assert "## Contributing" not in cleaned
+    assert "Open a pull request." not in cleaned
+
+
+def test_documentation_context_includes_project_setup_files(
+    client,
+    register_user,
+    project_factory,
+    file_factory,
+    symbol_factory,
+    chunk_factory,
+    dependency_factory,
+    fake_documentation_ai,
+    db_session,
+    tmp_path,
+):
+    user, headers, project = _create_documentable_project(
+        register_user,
+        project_factory,
+        file_factory,
+        symbol_factory,
+        chunk_factory,
+        dependency_factory,
+        "documentation-setup-context@example.com",
+    )
+
+    (tmp_path / "requirements.txt").write_text(
+        "Flask\ngunicorn\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "Procfile").write_text(
+        "web: gunicorn app:app\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "README.md").write_text(
+        "# Demo\n\nRun `pip install -r requirements.txt`.\n",
+        encoding="utf-8",
+    )
+
+    file_factory(
+        project.id,
+        "requirements.txt",
+        language="Other",
+    )
+    file_factory(project.id, "Procfile", language="Other")
+    file_factory(project.id, "README.md", language="Markdown")
+
+    project.root_path = str(tmp_path)
+    db_session.commit()
+
+    response = client.post(
+        f"/api/projects/{project.id}/documentation",
+        headers=headers,
+    )
+
+    assert response.status_code == 200, response.text
+
+    prompt = fake_documentation_ai["prompt"]
+
+    assert "PROJECT SETUP AND DEPLOYMENT FILES" in prompt
+    assert "File: requirements.txt" in prompt
+    assert "gunicorn" in prompt
+    assert "File: Procfile" in prompt
+    assert "web: gunicorn app:app" in prompt
+    assert "File: README.md" in prompt
+    assert "pip install -r requirements.txt" in prompt
+    assert "only" in prompt.lower()
 
 
 def test_documentation_requires_authentication(

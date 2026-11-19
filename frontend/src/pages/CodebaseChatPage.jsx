@@ -4,7 +4,6 @@ import {
   ArrowLeft,
   MessageSquare,
   Plus,
-  RefreshCw,
   Sparkles,
   AlertCircle,
 } from 'lucide-react'
@@ -31,6 +30,23 @@ const SUGGESTED_QUESTIONS = [
   'Summarize the responsibilities of the main directories.',
 ]
 
+function createConversationId() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID()
+  }
+
+  // RFC 4122 version 4 UUID for browsers without crypto.randomUUID.
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(
+    /[xy]/g,
+    (character) => {
+      const random = Math.floor(Math.random() * 16)
+      const value = character === 'x' ? random : (random % 4) + 8
+
+      return value.toString(16)
+    }
+  )
+}
+
 function CodebaseChatPage() {
   const { projectId } = useParams()
   const navigate = useNavigate()
@@ -51,6 +67,13 @@ function CodebaseChatPage() {
   // When a brand-new conversation is created the stored messages are
   // reloaded, so remember that the latest answer should be typed out.
   const pendingTypingRef = useRef(false)
+
+  // Reuse one conversation ID for the first question so a retry after a
+  // dropped response does not create a second conversation.
+  const draftConversationIdRef = useRef(null)
+
+  // Guard against duplicate submissions before React applies isLoading.
+  const sendingRef = useRef(false)
 
   const loadConversations = useCallback(async () => {
     const response = await chatService.getConversations(projectId)
@@ -169,6 +192,24 @@ function CodebaseChatPage() {
   }, [projectId, activeConversationId])
 
   const handleSend = async (question) => {
+    // Ignore a second submission while the first answer is in flight.
+    if (sendingRef.current) {
+      return
+    }
+
+    sendingRef.current = true
+
+    // A new conversation gets its ID before the request, so retries reuse
+    // the same conversation instead of creating duplicate history.
+    const conversationId =
+      activeConversationId ||
+      draftConversationIdRef.current ||
+      createConversationId()
+
+    if (!activeConversationId) {
+      draftConversationIdRef.current = conversationId
+    }
+
     const optimisticMessage = {
       id: `pending-${Date.now()}`,
       role: 'user',
@@ -185,7 +226,7 @@ function CodebaseChatPage() {
       const result = await chatService.sendMessage(
         projectId,
         question,
-        activeConversationId
+        conversationId
       )
 
       const answer = {
@@ -204,6 +245,7 @@ function CodebaseChatPage() {
         // Setting the conversation ID reloads the stored messages and
         // the reload marks the new answer for the typing effect.
         pendingTypingRef.current = true
+        draftConversationIdRef.current = null
         setActiveConversationId(result.conversation_id)
       }
 
@@ -214,36 +256,17 @@ function CodebaseChatPage() {
         'The AI could not answer this question. Please try again.'
       )
     } finally {
+      sendingRef.current = false
       setIsSending(false)
     }
   }
 
   const handleNewChat = () => {
     pendingTypingRef.current = false
+    draftConversationIdRef.current = null
     setActiveConversationId(null)
     setMessages([])
     setSendError('')
-  }
-
-  const handleRefresh = async () => {
-    setPageError('')
-
-    try {
-      await loadConversations()
-
-      if (activeConversationId) {
-        const response = await chatService.getMessages(
-          projectId,
-          activeConversationId
-        )
-        setMessages(response)
-      }
-    } catch (err) {
-      setPageError(
-        err.response?.data?.detail ||
-        'Unable to refresh conversations.'
-      )
-    }
   }
 
   const activeConversation = conversations.find(
@@ -314,15 +337,6 @@ function CodebaseChatPage() {
                 with references to the files that were used.
               </p>
             </div>
-
-            <button
-              className="chat-refresh-button"
-              onClick={handleRefresh}
-              title="Refresh conversations"
-            >
-              <RefreshCw size={16} />
-              Refresh
-            </button>
           </section>
 
           <div className="chat-layout">

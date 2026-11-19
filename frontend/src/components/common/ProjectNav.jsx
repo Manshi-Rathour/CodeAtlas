@@ -6,6 +6,7 @@ import {
   Network,
   Sparkles,
   FileText,
+  Route,
 } from 'lucide-react'
 
 import './ProjectNav.css'
@@ -20,6 +21,7 @@ function ProjectNav({ projectId }) {
     { label: 'Architecture', path: `${base}/architecture`, icon: Sparkles },
     { label: 'Documentation', path: `${base}/documentation`, icon: FileText },
     { label: 'Dependencies', path: `${base}/graph`, icon: Network },
+    { label: 'APIs & Metrics', path: `${base}/apis`, icon: Route },
   ]
 
   return (

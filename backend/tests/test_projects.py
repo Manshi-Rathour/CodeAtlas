@@ -159,3 +159,53 @@ def test_create_project_without_token(client):
     )
 
     assert response.status_code == 401
+
+
+def test_delete_project_removes_imported_storage(
+    client,
+    db_session,
+    tmp_path,
+    monkeypatch,
+):
+    from app.core.config import settings
+    from app.models.project import Project
+    from app.models.user import User
+
+    monkeypatch.setattr(settings, "UPLOAD_DIR", str(tmp_path))
+
+    token = create_test_user(client, "delete-storage@example.com")
+
+    user = (
+        db_session.query(User)
+        .filter(User.email == "delete-storage@example.com")
+        .one()
+    )
+
+    storage_folder = tmp_path / str(user.id) / "storageid"
+    source_folder = storage_folder / "source" / "project"
+    source_folder.mkdir(parents=True)
+    (source_folder / "app.py").write_text("print('hello')", encoding="utf-8")
+
+    response = client.post(
+        "/api/projects/",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"name": "Delete Storage Project", "source_type": "zip"},
+    )
+
+    project_id = response.json()["id"]
+
+    project = (
+        db_session.query(Project)
+        .filter(Project.id == project_id)
+        .one()
+    )
+    project.root_path = str(source_folder)
+    db_session.commit()
+
+    delete_response = client.delete(
+        f"/api/projects/{project_id}",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert delete_response.status_code == 200
+    assert not storage_folder.exists()
