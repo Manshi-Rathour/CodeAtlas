@@ -364,9 +364,9 @@ Open the frontend, sign up, and import a ZIP or public GitHub repository from th
 
 | Variable | Purpose | Default |
 | --- | --- | --- |
-| `POSTGRES_DB` | Database name | `codeatlas` |
-| `POSTGRES_USER` | Database user | `codeatlas` |
-| `POSTGRES_PASSWORD` | Database password | example placeholder |
+| `POSTGRES_DB` | Database name | `your-codeatlas-db` |
+| `POSTGRES_USER` | Database user | `your-codeatlas-db-user` |
+| `POSTGRES_PASSWORD` | Database password | `choose-a-local-password ` |
 | `POSTGRES_PORT` | Host port for PostgreSQL | `5432` |
 
 ### Frontend (`frontend/.env`, optional)
