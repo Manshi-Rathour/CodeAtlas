@@ -173,6 +173,7 @@ def test_delete_account_removes_user_projects_and_storage(
         == 0
     )
     assert not storage_folder.exists()
+    assert not (tmp_path / str(user.id)).exists()
 
 
 def test_profile_endpoints_require_authentication(client):

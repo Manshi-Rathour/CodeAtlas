@@ -209,3 +209,130 @@ def test_delete_project_removes_imported_storage(
 
     assert delete_response.status_code == 200
     assert not storage_folder.exists()
+    assert not (tmp_path / str(user.id)).exists()
+
+
+def test_architecture_indexes_project_without_inventory(
+    client,
+    db_session,
+    tmp_path,
+    monkeypatch,
+):
+    from app.core.config import settings
+    from app.models.project import Project
+    from app.models.project_file import ProjectFile
+    from app.models.user import User
+
+    monkeypatch.setattr(settings, "UPLOAD_DIR", str(tmp_path))
+
+    token = create_test_user(client, "legacy-architecture@example.com")
+
+    user = (
+        db_session.query(User)
+        .filter(User.email == "legacy-architecture@example.com")
+        .one()
+    )
+
+    source_folder = (
+        tmp_path / str(user.id) / "legacy-storage" / "source"
+    )
+    source_folder.mkdir(parents=True)
+    (source_folder / "app.py").write_text(
+        "def hello():\n    return 'hi'\n",
+        encoding="utf-8",
+    )
+
+    response = client.post(
+        "/api/projects/",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"name": "Legacy Architecture", "source_type": "zip"},
+    )
+
+    project_id = response.json()["id"]
+
+    project = (
+        db_session.query(Project)
+        .filter(Project.id == project_id)
+        .one()
+    )
+    project.root_path = str(source_folder)
+    db_session.commit()
+
+    assert (
+        db_session.query(ProjectFile)
+        .filter(ProjectFile.project_id == project_id)
+        .count()
+        == 0
+    )
+
+    architecture_response = client.get(
+        f"/api/projects/{project_id}/architecture?include_ai=false",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert architecture_response.status_code == 200, (
+        architecture_response.text
+    )
+    assert architecture_response.json()["total_files"] >= 1
+
+    assert (
+        db_session.query(ProjectFile)
+        .filter(ProjectFile.project_id == project_id)
+        .count()
+        >= 1
+    )
+
+
+def test_project_summary_reports_analysis_status(client, db_session):
+    from app.models.code_chunk import CodeChunk
+    from app.models.project_file import ProjectFile
+
+    token = create_test_user(client, "summary-status@example.com")
+    headers = {"Authorization": f"Bearer {token}"}
+
+    first_response = client.post(
+        "/api/projects/",
+        headers=headers,
+        json={"name": "Analyzed Project", "source_type": "zip"},
+    )
+    second_response = client.post(
+        "/api/projects/",
+        headers=headers,
+        json={"name": "Awaiting Project", "source_type": "zip"},
+    )
+
+    analyzed_project_id = first_response.json()["id"]
+    awaiting_project_id = second_response.json()["id"]
+
+    project_file = ProjectFile(
+        project_id=analyzed_project_id,
+        filename="app.py",
+        relative_path="app.py",
+        extension=".py",
+        language="python",
+        size_bytes=24,
+    )
+    db_session.add(project_file)
+    db_session.commit()
+    db_session.refresh(project_file)
+
+    db_session.add(
+        CodeChunk(
+            file_id=project_file.id,
+            chunk_type="function",
+            name="hello",
+            start_line=1,
+            end_line=2,
+            content="def hello():\n    return 'hi'",
+        )
+    )
+    db_session.commit()
+
+    response = client.get("/api/projects/summary", headers=headers)
+
+    assert response.status_code == 200, response.text
+
+    rows = {row["id"]: row for row in response.json()}
+
+    assert rows[analyzed_project_id]["has_analysis"] is True
+    assert rows[awaiting_project_id]["has_analysis"] is False

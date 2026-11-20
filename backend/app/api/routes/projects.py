@@ -122,10 +122,27 @@ def get_project_summaries(
         .all()
     )
 
+    # Analysis creates searchable chunks for every analyzed file, so the
+    # presence of a chunk marks a project as analyzed. Files are indexed
+    # during import, before the user runs analysis.
+    analyzed_project_ids = {
+        project_id
+        for (project_id,) in (
+            db.query(ProjectFile.project_id)
+            .join(CodeChunk, CodeChunk.file_id == ProjectFile.id)
+            .distinct()
+            .all()
+        )
+    }
+
     return [
         {
             **ProjectResponse.model_validate(project).model_dump(),
             "total_files": total_files,
+            "has_analysis": (
+                project.status == "analyzed"
+                or project.id in analyzed_project_ids
+            ),
         }
         for project, total_files in rows
     ]
@@ -238,12 +255,15 @@ def delete_project(
             detail="Project not found."
         )
 
+    root_path = project.root_path
+    owner_id = current_user.id
+
     db.delete(project)
     db.commit()
 
     remove_project_storage(
-        project.root_path,
-        current_user.id,
+        root_path,
+        owner_id,
     )
 
     return {

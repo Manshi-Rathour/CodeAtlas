@@ -11,6 +11,9 @@ from app.models.dependency import Dependency
 from app.services.analysis.parser_manager import analyze_file
 from app.services.analysis.dependency_resolver import resolve_dependencies
 from app.services.analysis.generic_chunk_extractor import extract_generic_chunks
+from app.services.analysis.file_inventory_service import (
+    ensure_project_inventory,
+)
 
 from app.services.analysis.file_scanner import (
     is_binary_file,
@@ -43,6 +46,15 @@ def analyze_project(
     project_files = db.query(ProjectFile).filter(
         ProjectFile.project_id == project.id
     ).all()
+
+    # Legacy imports may not have a file inventory yet. Build it before
+    # analysis so those projects can recover without a re-import.
+    if not project_files:
+        ensure_project_inventory(db, project)
+
+        project_files = db.query(ProjectFile).filter(
+            ProjectFile.project_id == project.id
+        ).all()
 
     # Remove symbols from previous analysis.
     db.query(CodeSymbol).filter(
@@ -195,6 +207,10 @@ def analyze_project(
             created_dependencies,
             project_files
         )
+
+        # Mark the project as analyzed so dashboards can distinguish it
+        # from an import that has not been analyzed yet.
+        project.status = "analyzed"
 
         # Save symbols, chunks and resolved dependencies.
         db.commit()

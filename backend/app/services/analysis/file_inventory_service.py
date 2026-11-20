@@ -63,3 +63,32 @@ def save_file_inventory(
     except Exception:
         db.rollback()
         raise
+
+
+def ensure_project_inventory(
+    db: Session,
+    project: Project
+) -> bool:
+    """
+    Index a project's files when its inventory is missing.
+
+    Older imports created a project row without saving any file records.
+    Building the inventory here lets analysis, architecture and file pages
+    recover without re-importing the source.
+
+    Returns True when a new inventory was created.
+    """
+
+    existing_file = (
+        db.query(ProjectFile.id)
+        .filter(ProjectFile.project_id == project.id)
+        .first()
+    )
+
+    if existing_file is not None:
+        return False
+
+    save_file_inventory(db, project)
+
+    return True
+

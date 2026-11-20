@@ -21,6 +21,7 @@ import {
   Route,
   FileText,
   MessagesSquare,
+  Info,
 } from 'lucide-react'
 
 import Sidebar from '../components/common/Sidebar'
@@ -42,6 +43,7 @@ function ProjectOverviewPage() {
 
   const [isLoading, setIsLoading] = useState(true)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [hasRequestedAnalysis, setHasRequestedAnalysis] = useState(false)
 
   const [error, setError] = useState('')
   const [analysisError, setAnalysisError] = useState('')
@@ -80,6 +82,7 @@ function ProjectOverviewPage() {
 
   const handleRunAnalysis = async () => {
     setIsAnalyzing(true)
+    setHasRequestedAnalysis(true)
     setAnalysisError('')
 
     try {
@@ -89,6 +92,11 @@ function ProjectOverviewPage() {
         await analysisService.getProjectAnalysis(projectId)
 
       setAnalysisData(result)
+      setProject((currentProject) =>
+        currentProject
+          ? { ...currentProject, status: 'analyzed' }
+          : currentProject
+      )
     } catch (err) {
       setAnalysisError(
         err.response?.data?.detail ||
@@ -117,6 +125,16 @@ function ProjectOverviewPage() {
 
   const symbols = analysisData?.symbols || []
   const dependencies = analysisData?.dependencies || []
+
+  // Hide the guidance once analysis has produced results or the user has
+  // already started a run from this page.
+  const hasAnalysisResults =
+    symbols.length > 0 || dependencies.length > 0
+
+  const showAnalysisNotice =
+    !hasRequestedAnalysis &&
+    project?.status !== 'analyzed' &&
+    !hasAnalysisResults
 
   const functionCount = symbols.filter(
     (item) => item.type === 'function'
@@ -240,6 +258,41 @@ function ProjectOverviewPage() {
 
           <ProjectNav projectId={projectId} />
 
+          {showAnalysisNotice && (
+            <section className="analysis-notice" role="status">
+              <div className="analysis-notice-icon">
+                <Info size={20} />
+              </div>
+
+              <div className="analysis-notice-text">
+                <strong>Run codebase analysis first</strong>
+
+                <p>
+                  Dependencies, detected API endpoints, analysis metrics,
+                  architecture details and the dependency graph are
+                  generated when codebase analysis runs. Scroll down to{' '}
+                  <b>Codebase Analysis</b> and select{' '}
+                  <b>Run Analysis</b> to populate these views.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                className="analysis-notice-action"
+                onClick={() =>
+                  document
+                    .getElementById('codebase-analysis')
+                    ?.scrollIntoView({
+                      behavior: 'smooth',
+                      block: 'start',
+                    })
+                }
+              >
+                Go to analysis
+              </button>
+            </section>
+          )}
+
           {/* Project information */}
           <section className="project-hero">
             <div className="project-hero-main">
@@ -261,12 +314,6 @@ function ProjectOverviewPage() {
                 </p>
               </div>
             </div>
-
-            <span
-              className={`project-status-badge status-${project.status}`}
-            >
-              {project.status}
-            </span>
           </section>
 
           {/* Project statistics */}
@@ -420,7 +467,10 @@ function ProjectOverviewPage() {
           )}
 
           {/* Codebase analysis */}
-          <section className="analysis-section">
+          <section
+            className="analysis-section"
+            id="codebase-analysis"
+          >
             <div className="analysis-header">
               <div>
                 <div className="analysis-title-label">

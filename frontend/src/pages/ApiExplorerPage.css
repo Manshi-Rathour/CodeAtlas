@@ -128,14 +128,6 @@
   overflow-wrap: anywhere;
 }
 
-.api-stat-card small {
-  color: #64748b;
-  font-size: 9.5px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 /* Sections */
 
 .api-endpoints-section,

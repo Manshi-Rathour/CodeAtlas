@@ -39,6 +39,93 @@
   background: #14243b;
 }
 
+/* Analysis guidance */
+
+.analysis-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 24px;
+  padding: 17px 19px;
+  border: 1px solid rgba(56, 189, 248, 0.26);
+  border-radius: 13px;
+  background:
+    linear-gradient(
+      120deg,
+      rgba(14, 165, 233, 0.11),
+      rgba(37, 99, 235, 0.07)
+    );
+}
+
+.analysis-notice-icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(56, 189, 248, 0.14);
+  color: #38bdf8;
+}
+
+.analysis-notice-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.analysis-notice-text strong {
+  display: block;
+  color: #e0f2fe;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.analysis-notice-text p {
+  margin: 5px 0 0;
+  color: #a3bfd6;
+  font-size: 12.5px;
+  line-height: 1.65;
+}
+
+.analysis-notice-text b {
+  color: #dbeafe;
+  font-weight: 600;
+}
+
+.analysis-notice-action {
+  flex-shrink: 0;
+  align-self: center;
+  padding: 9px 14px;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  border-radius: 9px;
+  background: rgba(14, 165, 233, 0.12);
+  color: #bae6fd;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.analysis-notice-action:hover {
+  border-color: #38bdf8;
+  background: rgba(14, 165, 233, 0.2);
+  color: #f0f9ff;
+}
+
+@media (max-width: 720px) {
+  .analysis-notice {
+    flex-wrap: wrap;
+    padding: 15px;
+  }
+
+  .analysis-notice-action {
+    width: 100%;
+    align-self: stretch;
+  }
+}
+
 /* Project hero */
 
 .project-hero {
@@ -106,36 +193,6 @@
 }
 
 /* Status */
-
-.project-status-badge {
-  flex-shrink: 0;
-  padding: 8px 13px;
-  border: 1px solid #334155;
-  border-radius: 20px;
-  background: #172438;
-  color: #cbd5e1;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: capitalize;
-}
-
-.project-status-badge.status-ready {
-  border-color: rgba(34, 197, 94, 0.25);
-  background: rgba(34, 197, 94, 0.1);
-  color: #4ade80;
-}
-
-.project-status-badge.status-failed {
-  border-color: rgba(248, 113, 113, 0.25);
-  background: rgba(239, 68, 68, 0.1);
-  color: #f87171;
-}
-
-.project-status-badge.status-importing {
-  border-color: rgba(59, 130, 246, 0.3);
-  background: rgba(37, 131, 247, 0.1);
-  color: #60a5fa;
-}
 
 /* Stats */
 

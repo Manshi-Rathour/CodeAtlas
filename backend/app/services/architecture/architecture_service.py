@@ -8,6 +8,9 @@ from app.models.project_file import ProjectFile
 from app.models.code_symbol import CodeSymbol
 from app.models.dependency import Dependency
 from app.services.analysis.file_scanner import NON_PROGRAMMING_FILE_TYPES
+from app.services.analysis.file_inventory_service import (
+    ensure_project_inventory,
+)
 
 
 def analyze_project_architecture(
@@ -36,6 +39,23 @@ def analyze_project_architecture(
         .order_by(ProjectFile.relative_path.asc())
         .all()
     )
+
+    # Legacy imports may not have a file inventory yet. Build it so the
+    # architecture page can load without re-importing the source.
+    if not files:
+        try:
+            ensure_project_inventory(db, project)
+        except ValueError:
+            # No source directory is configured; report the standard
+            # empty-project error below.
+            pass
+
+        files = (
+            db.query(ProjectFile)
+            .filter(ProjectFile.project_id == project_id)
+            .order_by(ProjectFile.relative_path.asc())
+            .all()
+        )
 
     if not files:
         raise ValueError("No project files were found.")

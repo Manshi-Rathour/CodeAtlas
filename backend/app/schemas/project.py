@@ -62,3 +62,4 @@ class ProjectResponse(BaseModel):
 # Schema used by the dashboard summary endpoint
 class ProjectSummaryResponse(ProjectResponse):
     total_files: int = 0
+    has_analysis: bool = False

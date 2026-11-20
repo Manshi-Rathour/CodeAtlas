@@ -218,7 +218,7 @@ function DependencyGraphPage() {
                 </div>
               )}
 
-              <section className="graph-toolbar">
+              {/* <section className="graph-toolbar">
                 <div className="graph-legend">
                   <span>
                     <i className="legend-source" />
@@ -230,7 +230,7 @@ function DependencyGraphPage() {
                     imported file
                   </span>
                 </div>
-              </section>
+              </section> */}
 
               <div
                 className={`graph-workspace ${

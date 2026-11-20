@@ -111,9 +111,9 @@ function Sidebar() {
           <span>Sign out</span>
         </button>
 
-        <div className="sidebar-version">
-          CodeAtlas · MVP
-        </div>
+        {/* <div className="sidebar-version">
+          CodeAtlas
+        </div> */}
       </div>
     </aside>
   )

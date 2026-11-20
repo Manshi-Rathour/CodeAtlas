@@ -1,44 +1,101 @@
 # CodeAtlas
 
-CodeAtlas is a full-stack codebase understanding platform. Import a project from a ZIP archive or a public GitHub repository, analyze it locally, and explore its files, architecture, dependencies, detected HTTP APIs, AI-generated documentation and an AI chat assistant that answers questions about the code.
+CodeAtlas is a local-first, full-stack codebase understanding platform. Import a project from a ZIP archive or a public GitHub repository, analyze it on your machine, and explore its files, symbols, architecture, dependencies, detected HTTP APIs, metrics, generated documentation, and an AI assistant that answers questions about the code.
 
-The application runs entirely on your machine. Imported code is scanned as text and is **never executed**.
+Imported source code is scanned strictly as text. It is **never installed, imported as a module, or executed**.
+
+---
+
+## Table of contents
+
+- [Overview](#overview)
+- [Features](#features)
+- [Architecture](#architecture)
+- [Technology stack](#technology-stack)
+- [Prerequisites](#prerequisites)
+- [Setup](#setup)
+- [Configuration](#configuration)
+- [Using the application](#using-the-application)
+- [API reference](#api-reference)
+- [Security](#security)
+- [Local data and cleanup](#local-data-and-cleanup)
+- [Testing](#testing)
+- [Project structure](#project-structure)
+- [Known limitations](#known-limitations)
+- [Development notes](#development-notes)
+
+---
+
+## Overview
+
+CodeAtlas solves the "unfamiliar repository" problem:
+
+1. A signed-in user imports a project (ZIP or public GitHub repository).
+2. The importer inventories every supported file in PostgreSQL.
+3. Analysis extracts symbols, chunks, imports, dependencies, frameworks and technologies.
+4. The project becomes explorable through dedicated pages:
+   - file explorer and source viewer,
+   - architecture summary with an optional local-AI explanation,
+   - dependency graph,
+   - detected HTTP API endpoints and project metrics,
+   - AI-generated documentation,
+   - retrieval-based chat grounded in the project's source code.
+5. Deleting the project (or the account) also removes the corresponding extracted source folders from local storage.
+
+Everything runs locally: PostgreSQL in Docker (recommended), a FastAPI backend, a Vite/React frontend, and an optional Ollama server for AI features.
 
 ---
 
 ## Features
 
+### Authentication and account
+
+- Email/password signup and login with JWT access tokens.
+- Argon2 password hashing.
+- Protected frontend routes and a session check on page load.
+- Profile page opened from the topbar or sidebar:
+  - view account name, email and member-since date,
+  - update the display name,
+  - change the password by confirming the current password (no email verification),
+  - permanently delete the account and all owned data.
+
 ### Project import
 
-- ZIP upload with safe extraction (path traversal and archive-size protection).
-- Public GitHub repository import through the GitHub archive API.
-- Imported files are inventoried in PostgreSQL with language, size and path metadata.
-- Deleting a project also removes its extracted source folder.
+- ZIP upload with safe extraction (path traversal, symlink and archive-size protection).
+- Public GitHub repository import through the GitHub archive API, with branch selection.
+- File inventory stored in PostgreSQL with language, size and relative path metadata.
+- Per-user storage layout under `backend/app/storage/projects/<user_id>/<storage_id>/`.
 
 ### Code intelligence
 
-- Symbol extraction (functions, methods, classes) for supported languages using tree-sitter.
-- Searchable code chunks for retrieval.
+- Symbol extraction (functions, methods, classes and other symbols) using tree-sitter.
+- Searchable code chunks used for retrieval.
 - Import and dependency extraction, including resolved internal file references and external libraries.
 - Framework, language, library and database detection from manifests and imports.
-- Architecture summary with an optional local-AI explanation.
+- Architecture summary with optional local-AI explanation.
 - Internal dependency graph (files as nodes, resolved imports as edges).
 - HTTP API endpoint detection for Flask, FastAPI, Django, Express, NestJS, Next.js, Spring, Go, PHP/Laravel, Ruby on Rails, ASP.NET, Rust, Swift and Phoenix source patterns.
-- Project metrics: files, bytes, languages, symbols, chunks, resolved dependencies, API endpoints, conversations and documentation status.
+- Project metrics: files, bytes, languages, functions/classes, chunks, resolved dependencies, API endpoints, conversations and documentation status.
+- Sensitive-file filtering before route-detection reads source files.
 
-### AI features (local Ollama)
+### AI features (optional, local Ollama)
 
-- Codebase chat with retrieval over analyzed code chunks and conversation history.
-- Generated project documentation with setup files (README, dependency manifests, Procfile, Docker files and similar) supplied as grounding context.
-- Documentation is sanitized before it is returned: Markdown links are reduced to plain text, images are removed, and boilerplate License/Contributing sections are dropped. Fenced code blocks with real commands are preserved.
+- **Codebase chat** with retrieval over indexed chunks and stored conversation history.
+  - Conversation IDs are generated by the client for the first message, so retries do not duplicate conversations.
+  - Answers include source references (file path and line range).
+- **Generated documentation** with setup files (README, manifests, Procfile, Docker files and similar) supplied as grounding context.
+  - Documentation is sanitized before display: Markdown links become plain text, images are removed, and boilerplate License/Contributing sections are dropped. Fenced code blocks with real commands are preserved.
+- **Architecture explanation** generated on request and cached per project in the browser (memory + `sessionStorage`) so it survives tab changes and reloads without new model calls.
 
-### Frontend
+### Frontend experience
 
 - React 19 + Vite single-page application.
-- Dashboard with project summaries (file counts fetched in one request).
+- Dashboard with project summaries (file counts fetched in one request) and a count of projects that have completed analysis versus those still awaiting it.
 - File explorer with a nested folder tree, language filter and search.
-- Architecture, documentation, dependency graph, chat and APIs & Metrics pages for every project.
-- JWT authentication with protected routes.
+- Monaco-based source viewer.
+- React Flow dependency graph.
+- Dedicated pages for architecture, documentation, chat, APIs & metrics, and profile.
+- Chat panel scrolls itself while answers are typed and pauses auto-follow when the user scrolls up.
 
 ---
 
@@ -46,27 +103,90 @@ The application runs entirely on your machine. Imported code is scanned as text 
 
 ```text
 CodeAtlas/
-├── backend/                 FastAPI application
-│   ├── alembic/             Database migrations
+├── backend/                     FastAPI application
+│   ├── alembic/                 Database migrations
 │   ├── app/
-│   │   ├── api/routes/      HTTP routers
-│   │   ├── core/            Settings and security helpers
-│   │   ├── database/        SQLAlchemy engine and session
-│   │   ├── models/          ORM models
-│   │   ├── schemas/         Pydantic request/response schemas
-│   │   ├── services/        Import, analysis, AI and documentation logic
-│   │   └── storage/         Extracted project sources (git-ignored)
-│   └── tests/               Pytest suite
-├── frontend/                React + Vite application
+│   │   ├── api/
+│   │   │   ├── dependencies.py  Current-user dependency
+│   │   │   └── routes/          HTTP routers (auth, users, projects, uploads,
+│   │   │                        github, files, chat, documentation,
+│   │   │                        architecture, graph, apis)
+│   │   ├── core/                Settings and security helpers
+│   │   ├── database/            SQLAlchemy engine, session, base
+│   │   ├── models/              ORM models
+│   │   ├── schemas/             Pydantic request/response schemas
+│   │   ├── services/
+│   │   │   ├── ai/              Ollama client, chat and prompts
+│   │   │   ├── analysis/        Scanning, parsing, symbols, chunks,
+│   │   │   │                    imports, dependencies, frameworks, APIs, metrics
+│   │   │   ├── architecture/    Facts + AI explanation
+│   │   │   ├── documentation/   Documentation generation and sanitizing
+│   │   │   ├── search/          Chunking and retrieval
+│   │   │   └── source/          ZIP/GitHub import and storage cleanup
+│   │   └── storage/projects/    Extracted sources (git-ignored)
+│   └── tests/                   Pytest suite
+├── frontend/                    React + Vite application
 │   └── src/
-│       ├── components/      Shared UI components
-│       ├── context/         Auth context
-│       ├── pages/           Route-level pages
-│       └── services/        Axios API clients
-└── docker-compose.yml       Local PostgreSQL service
+│       ├── components/          Shared UI (chat, common, dashboard, explorer, graph)
+│       ├── context/             Auth context
+│       ├── hooks/               useAuth
+│       ├── pages/               Route-level pages
+│       ├── services/            Axios API clients
+│       └── utils/               Formatting, tree building, caches, constants
+├── docker-compose.yml           Local PostgreSQL 17 service
+├── .env.example                 Root PostgreSQL credentials for Docker
+└── README.md
 ```
 
-The backend keeps a clear separation between routers, services and persistence. Each service receives the SQLAlchemy session and the owning project, and every project route verifies ownership before returning data.
+### Request flow
+
+```text
+React page
+   │  Axios (Bearer JWT)
+   ▼
+FastAPI router  ──verifies user + project ownership──► SQLAlchemy session
+   │
+   ▼
+Service layer
+   ├── source/         import + extract + delete local folders
+   ├── analysis/       read source text, build symbols/chunks/dependencies
+   ├── architecture/   database facts + optional Ollama explanation
+   ├── documentation/  retrieve grounding context + Ollama + sanitize
+   └── ai/             retrieve chunks + conversation history + Ollama
+```
+
+- Routers stay thin and delegate to services.
+- Services receive the SQLAlchemy session and the owning project/user.
+- Every project-scoped endpoint verifies ownership and returns `404` for another user's project.
+- PostgreSQL stores metadata, analysis results, chat history and documentation.
+- Source code remains on disk; database rows reference it through `projects.root_path`.
+
+### Database tables
+
+| Table | Purpose |
+| --- | --- |
+| `users` | Accounts, hashed passwords and activation flag |
+| `projects` | Project metadata, source type, status and local source path |
+| `project_files` | File inventory with language, size and relative path |
+| `code_symbols` | Extracted functions, methods, classes and other symbols |
+| `code_chunks` | Searchable source chunks for retrieval |
+| `dependencies` | Imports and resolved internal file references |
+| `chats` | Conversation messages (user/assistant) with source references |
+| `project_documentations` | Generated documentation content per project |
+
+### Local storage layout
+
+```text
+backend/app/storage/projects/
+└── <user_id>/
+    └── <storage_id>/            UUID folder per imported project
+        └── source/              Extracted ZIP/GitHub source
+```
+
+- Project deletion removes its `<storage_id>` folder.
+- Deleting the last project also removes the now-empty `<user_id>` folder.
+- Account deletion removes the entire `<user_id>` folder.
+- All cleanup paths are resolved and constrained to the configured upload directory.
 
 ---
 
@@ -74,43 +194,55 @@ The backend keeps a clear separation between routers, services and persistence. 
 
 | Layer | Technology |
 | --- | --- |
-| Backend | Python, FastAPI, SQLAlchemy 2, Alembic, Pydantic v2 |
-| Database | PostgreSQL 17 |
-| Authentication | JWT (PyJWT) with Argon2 password hashing |
-| Parsing | tree-sitter language pack |
-| AI | Local Ollama server (`qwen2.5-coder:7b` by default) |
-| Frontend | React 19, React Router, Vite, Axios |
+| Backend framework | Python, FastAPI, Uvicorn |
+| ORM and migrations | SQLAlchemy 2, Alembic |
+| Database | PostgreSQL 17 (Docker Compose) |
+| Validation | Pydantic v2, pydantic-settings, email-validator |
+| Authentication | PyJWT (HS256), `pwdlib[argon2]` |
+| Parsing | `tree-sitter-language-pack` |
+| Source import | `requests` (GitHub archive API), `python-multipart` (uploads) |
+| AI | Local Ollama server (`qwen2.5-coder:7b` in `.env.example`) |
+| Frontend | React 19, React Router 7, Vite 8 |
+| HTTP client | Axios |
+| UI and icons | Lucide React, custom CSS |
 | Visualization | React Flow (`@xyflow/react`), Monaco Editor |
-| Testing | Pytest, HTTPX, FastAPI TestClient |
+| Markdown | `react-markdown` |
+| Testing | Pytest, HTTPX, FastAPI TestClient, Vitest (installed) |
+| Linting | oxlint |
 
 ---
 
 ## Prerequisites
 
-- Python 3.11 or newer
-- Node.js 20 or newer (with npm)
-- Docker (recommended for PostgreSQL) or an existing PostgreSQL 17 instance
-- Ollama installed and running locally, if you want chat and documentation features
+- **Python 3.11+**
+- **Node.js 20+** and npm
+- **Docker** (recommended for PostgreSQL) or an existing PostgreSQL 17 instance
+- **Ollama** (optional) for chat, documentation and architecture explanations
+- A modern browser
+
+Verified locally with Python 3.12 and Node.js 20+.
 
 ---
 
 ## Setup
 
-### 1. Start PostgreSQL
+### 1. Clone and start PostgreSQL
 
-Create a root `.env` file from the example and choose local credentials:
+From the repository root:
 
 ```bash
 cp .env.example .env
 ```
 
-Then start the database container:
+Edit `.env` and choose local database credentials, then start the database:
 
 ```bash
 docker compose up -d db
 ```
 
-This exposes PostgreSQL on the port set by `POSTGRES_PORT` (default `5432`) and persists data in the `postgres_data` volume.
+PostgreSQL is exposed on `${POSTGRES_PORT:-5432}` and persisted in the `postgres_data` Docker volume.
+
+If you already run PostgreSQL locally, skip Docker and point `DATABASE_URL` at that instance instead.
 
 ### 2. Configure the backend
 
@@ -119,18 +251,12 @@ cd backend
 cp .env.example .env
 ```
 
-Edit `backend/.env` so `DATABASE_URL` matches the credentials in the root `.env`. Set `SECRET_KEY` to a long random string. The full variable list:
+Edit `backend/.env`:
 
-| Variable | Purpose | Default |
-| --- | --- | --- |
-| `DATABASE_URL` | PostgreSQL connection string | required |
-| `SECRET_KEY` | JWT signing key | development placeholder |
-| `ALGORITHM` | JWT algorithm | `HS256` |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | Token lifetime | `30` |
-| `UPLOAD_DIR` | Extracted project storage, relative to `backend/` | `app/storage/projects` |
-| `MAX_UPLOAD_SIZE_MB` | ZIP upload limit | `100` |
-| `OLLAMA_URL` | Local Ollama server | `http://localhost:11434` |
-| `OLLAMA_MODEL` | Model used for chat and documentation | `qwen2.5-coder:3b` |
+- set `DATABASE_URL` to match the credentials from the root `.env`,
+- set `SECRET_KEY` to a long random string.
+
+See [Configuration](#configuration) for every variable.
 
 ### 3. Install backend dependencies
 
@@ -141,15 +267,15 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-On Windows, activate the virtual environment with `venv\Scripts\activate`.
+On Windows, activate with `venv\Scripts\activate`.
 
 ### 4. Run database migrations
-
-From `backend/` with the virtual environment active:
 
 ```bash
 alembic upgrade head
 ```
+
+Run this from `backend/` with the virtual environment active. Re-run it after pulling new migrations.
 
 ### 5. Start the backend
 
@@ -157,12 +283,15 @@ alembic upgrade head
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Useful endpoints:
+Useful URLs:
 
-- API root: `http://127.0.0.1:8000/`
-- Health check: `http://127.0.0.1:8000/health`
-- Database health: `http://127.0.0.1:8000/health/database`
-- Interactive API docs: `http://127.0.0.1:8000/docs`
+| URL | Purpose |
+| --- | --- |
+| `http://127.0.0.1:8000/` | API root |
+| `http://127.0.0.1:8000/health` | Application health |
+| `http://127.0.0.1:8000/health/database` | Database connectivity |
+| `http://127.0.0.1:8000/docs` | Swagger UI |
+| `http://127.0.0.1:8000/redoc` | ReDoc |
 
 ### 6. Start the frontend
 
@@ -176,7 +305,7 @@ npm run dev
 
 Open `http://127.0.0.1:5173`.
 
-The API client reads `VITE_API_BASE_URL` and falls back to `http://127.0.0.1:8000`. To point the frontend at another backend, create `frontend/.env`:
+The API client reads `VITE_API_BASE_URL` and falls back to `http://127.0.0.1:8000`. To point it elsewhere, create `frontend/.env`:
 
 ```bash
 VITE_API_BASE_URL=http://127.0.0.1:8000
@@ -191,13 +320,288 @@ ollama pull qwen2.5-coder:7b
 ollama serve
 ```
 
-Set `OLLAMA_MODEL` in `backend/.env` if you use a different model. Other features (import, analysis, file browsing, API detection, metrics) work without Ollama.
+Set `OLLAMA_MODEL` in `backend/.env` to use a different model. Import, analysis, file browsing, API detection and metrics work without Ollama; AI-dependent actions return a `503` when the server or model is unavailable.
+
+### 8. Create an account
+
+Open the frontend, sign up, and import a ZIP or public GitHub repository from the dashboard.
+
+---
+
+## Configuration
+
+### Backend (`backend/.env`)
+
+| Variable | Purpose | Default |
+| --- | --- | --- |
+| `DATABASE_URL` | PostgreSQL connection string | required |
+| `SECRET_KEY` | JWT signing key; use a long random value | development placeholder |
+| `ALGORITHM` | JWT signing algorithm | `HS256` |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | Access-token lifetime in minutes | `30` |
+| `UPLOAD_DIR` | Extracted project storage, relative to `backend/` | `app/storage/projects` |
+| `MAX_UPLOAD_SIZE_MB` | Maximum ZIP upload size | `100` |
+| `OLLAMA_URL` | Local Ollama base URL | `http://localhost:11434` |
+| `OLLAMA_MODEL` | Model used for chat, docs and explanations | `qwen2.5-coder:3b` (config default; `.env.example` uses `7b`) |
+
+### Root `.env` (Docker Compose)
+
+| Variable | Purpose | Default |
+| --- | --- | --- |
+| `POSTGRES_DB` | Database name | `codeatlas` |
+| `POSTGRES_USER` | Database user | `codeatlas` |
+| `POSTGRES_PASSWORD` | Database password | example placeholder |
+| `POSTGRES_PORT` | Host port for PostgreSQL | `5432` |
+
+### Frontend (`frontend/.env`, optional)
+
+| Variable | Purpose | Default |
+| --- | --- | --- |
+| `VITE_API_BASE_URL` | Backend base URL | `http://127.0.0.1:8000` |
+
+Environment files are git-ignored. Never commit real secrets.
+
+---
+
+## Using the application
+
+1. **Sign up or log in.** The JWT is stored in `localStorage`.
+2. **Import a project** from the dashboard:
+   - upload a `.zip` file, or
+   - paste a public GitHub repository URL and optional branch.
+3. **Open the project** from the dashboard or **My Projects**.
+4. **Explore:**
+   - **Overview** – languages, frameworks, counts and extracted symbols.
+   - **Files** – folder tree, file list, filters and source viewer.
+   - **Architecture** – structural facts and an optional AI explanation.
+   - **Documentation** – generate or read AI documentation.
+   - **Dependencies** – internal import graph.
+   - **Chat** – ask questions; answers cite source files and line ranges.
+   - **APIs & Metrics** – detected HTTP endpoints and project statistics.
+5. **Manage your account** by clicking your email/avatar in the topbar or your user block in the sidebar:
+   - update your display name,
+   - change your password,
+   - delete your account.
+6. **Delete a project** from its page or the project list. Its extracted source folder is removed from local storage. Deleting your account removes all owned projects and the entire per-user storage folder.
+
+---
+
+## API reference
+
+### Conventions
+
+- Base URL: `http://127.0.0.1:8000`
+- Protected endpoints require:
+
+  ```http
+  Authorization: Bearer <access_token>
+  ```
+
+- Project-scoped endpoints only return data for projects owned by the caller; otherwise they return `404`.
+- Request and response bodies are JSON unless noted as multipart.
+- Validation errors return `422`.
+- AI-dependent endpoints return `503` when Ollama is unavailable.
+- Interactive, always-current documentation is available at `/docs`.
+
+### Health and root
+
+| Method | Path | Auth | Description |
+| --- | --- | --- | --- |
+| `GET` | `/` | No | Application name and running status |
+| `GET` | `/health` | No | Application health |
+| `GET` | `/health/database` | No | PostgreSQL connectivity (`503` on failure) |
+
+### Authentication
+
+| Method | Path | Auth | Body / notes |
+| --- | --- | --- | --- |
+| `POST` | `/api/auth/signup` | No | `{ "full_name": "...", "email": "...", "password": "..." }` → `201` with user + token |
+| `POST` | `/api/auth/login` | No | `{ "email": "...", "password": "..." }` → user + token |
+| `GET` | `/api/auth/me` | Yes | Current user: `id`, `full_name`, `email`, `is_active`, `created_at` |
+
+**User response shape**
+
+```json
+{
+  "id": 1,
+  "full_name": "Example User",
+  "email": "user@example.com",
+  "is_active": true,
+  "created_at": "2026-01-01T10:00:00Z"
+}
+```
+
+**Auth response shape**
+
+```json
+{
+  "user": { "...": "UserResponse" },
+  "access_token": "<jwt>",
+  "token_type": "bearer"
+}
+```
+
+Validation rules: full name 2–100 characters, valid email, password 8–128 characters.
+
+### Users and profile
+
+| Method | Path | Auth | Body / notes |
+| --- | --- | --- | --- |
+| `PATCH` | `/api/users/me` | Yes | `{ "full_name": "New Name" }`; returns the updated user |
+| `POST` | `/api/users/me/password` | Yes | `{ "current_password": "...", "new_password": "..." }`; current password is required and reuse is rejected |
+| `DELETE` | `/api/users/me` | Yes | Permanently deletes the account, owned projects and local storage |
+
+No email verification is involved in password changes. After account deletion, the existing JWT no longer resolves to a user.
+
+### Projects
+
+| Method | Path | Auth | Body / notes |
+| --- | --- | --- | --- |
+| `POST` | `/api/projects/` | Yes | `{ "name", "description?", "source_type?", "repository_url?" }` → `201` |
+| `GET` | `/api/projects/` | Yes | List the caller's projects |
+| `GET` | `/api/projects/summary` | Yes | Projects with `total_files` and `has_analysis` for the dashboard |
+| `GET` | `/api/projects/{project_id}` | Yes | One project |
+| `PATCH` | `/api/projects/{project_id}` | Yes | `{ "name?", "description?" }` |
+| `DELETE` | `/api/projects/{project_id}` | Yes | Delete the project and its extracted source folder |
+| `POST` | `/api/projects/{project_id}/analyze` | Yes | Run the full analysis pipeline |
+| `GET` | `/api/projects/{project_id}/analysis` | Yes | Stored symbols, dependencies and technologies |
+
+`source_type` is one of `manual`, `zip` or `github` and defaults to `manual`. Names are 2–150 characters; descriptions are up to 2000 characters.
+
+**Project response shape**
+
+```json
+{
+  "id": 1,
+  "owner_id": 1,
+  "name": "Example Project",
+  "description": null,
+  "source_type": "zip",
+  "repository_url": null,
+  "status": "ready",
+  "created_at": "2026-01-01T10:00:00Z",
+  "updated_at": "2026-01-01T10:00:00Z"
+}
+```
+
+### Imports
+
+| Method | Path | Auth | Body / notes |
+| --- | --- | --- | --- |
+| `POST` | `/api/uploads/zip` | Yes | `multipart/form-data`: `name`, `description?`, `file` (`.zip`) → `201` |
+| `POST` | `/api/github/import` | Yes | `{ "repository_url", "branch?" (default "main"), "name?", "description?" }` → `201` |
+
+ZIP uploads are limited by `MAX_UPLOAD_SIZE_MB` (default 100). GitHub imports accept public repositories only.
+
+### Files and source viewer
+
+| Method | Path | Auth | Query / notes |
+| --- | --- | --- | --- |
+| `GET` | `/api/projects/{project_id}/files` | Yes | `page` (default 1), `page_size` (1–100, default 50), `language?`, `search?` |
+| `GET` | `/api/projects/{project_id}/file-tree` | Yes | Nested folder tree (up to 2000 files per tree payload) |
+| `GET` | `/api/projects/{project_id}/files/{file_id}/content` | Yes | Source text; symlinks are rejected |
+
+### Chat
+
+| Method | Path | Auth | Body / notes |
+| --- | --- | --- | --- |
+| `POST` | `/api/projects/{project_id}/chat` | Yes | `{ "question": "...", "conversation_id?": "<uuid>" }` |
+| `GET` | `/api/projects/{project_id}/chats` | Yes | Conversation list with titles |
+| `GET` | `/api/projects/{project_id}/chats/{conversation_id}` | Yes | Messages with `role`, `content`, `sources`, `created_at` |
+
+- `question` is 1–5000 characters.
+- A client-supplied `conversation_id` is accepted only when it is an unused UUID and not owned by another user; this prevents duplicated conversations on retry.
+- Answers include `sources` entries with `file_path`, `start_line` and `end_line`.
+
+**Chat response shape**
+
+```json
+{
+  "conversation_id": "3f2c...",
+  "answer": "The project exposes ...",
+  "sources": [
+    {
+      "file_path": "app/main.py",
+      "start_line": 10,
+      "end_line": 30,
+      "chunk_type": "function",
+      "name": "main"
+    }
+  ]
+}
+```
+
+### Documentation
+
+| Method | Path | Auth | Body / notes |
+| --- | --- | --- | --- |
+| `POST` | `/api/projects/{project_id}/documentation` | Yes | Generate (or regenerate) documentation with the local model |
+| `GET` | `/api/projects/{project_id}/documentation` | Yes | Read stored documentation (sanitized) |
+| `GET` | `/api/projects/{project_id}/documentation/status` | Yes | `{ "project_id", "exists", "message" }` |
+
+### Architecture, graph, APIs and metrics
+
+| Method | Path | Auth | Query / notes |
+| --- | --- | --- | --- |
+| `GET` | `/api/projects/{project_id}/architecture` | Yes | `include_ai` (default `true`); set `false` for database facts only |
+| `GET` | `/api/projects/{project_id}/graph` | Yes | Nodes are files; edges are resolved internal imports |
+| `GET` | `/api/projects/{project_id}/apis` | Yes | Detected HTTP endpoints with method, path, framework and source location |
+| `GET` | `/api/projects/{project_id}/metrics` | Yes | Files, bytes, languages, functions/classes, chunks, dependencies, APIs, conversations and documentation status |
+
+### Status codes used
+
+| Code | Meaning |
+| --- | --- |
+| `200` | Success |
+| `201` | Created (signup, project creation, import) |
+| `400` | Invalid import, incorrect current password, same password, or model input problem |
+| `401` | Missing, invalid or expired token; deleted account |
+| `403` | Forbidden file access (for example, a symlink) |
+| `404` | Project, conversation, file or account not found |
+| `409` | Email already registered |
+| `422` | Request validation failed |
+| `500` | Unexpected server error |
+| `503` | Database or Ollama unavailable |
+
+---
+
+## Security
+
+- Imported code is only parsed and searched as text; it is never imported as a module or executed.
+- ZIP extraction validates archive members and blocks unsafe paths, symlinks and oversized archives.
+- File-content access resolves paths against the project root and rejects symlinks.
+- Source folders are resolved and constrained to the configured upload directory before deletion.
+- Project endpoints verify ownership before returning data; cross-user access returns `404`.
+- Passwords are hashed with Argon2; only hashes are stored.
+- JWTs are signed with `SECRET_KEY` and expire after `ACCESS_TOKEN_EXPIRE_MINUTES` (default 30 minutes).
+- CORS is restricted to the local frontend origins `http://localhost:5173` and `http://127.0.0.1:5173`.
+- Uploaded files pass a sensitive-file filter before route detection reads them.
+- Environment files and the local storage directory are git-ignored; no credentials are committed.
+- The application is designed for local use. It is not hardened for public internet exposure.
+
+---
+
+## Local data and cleanup
+
+| Action | Database effect | Local disk effect |
+| --- | --- | --- |
+| Delete a project | Project row and its related rows are removed | `<UPLOAD_DIR>/<user_id>/<storage_id>` is removed; the user folder is removed if empty |
+| Delete an account | User and all owned projects/related rows are removed | Entire `<UPLOAD_DIR>/<user_id>` folder is removed |
+
+Manual projects have no source folder on disk.
+
+To inspect storage:
+
+```bash
+find backend/app/storage/projects -maxdepth 3 -type d
+```
+
+The storage directory is excluded from version control. Removing it only removes imported sources; run a fresh import to restore a project.
 
 ---
 
 ## Testing
 
-The backend suite uses an in-memory SQLite database, so it does not touch your PostgreSQL data:
+The backend suite uses an in-memory SQLite database, so it never touches your PostgreSQL data:
 
 ```bash
 cd backend
@@ -208,10 +612,10 @@ python -m pytest -q
 Current result on this machine:
 
 ```text
-210 passed, 1 skipped
+212 passed, 1 skipped
 ```
 
-The skipped test is an opt-in live Ollama integration test. It runs only when Ollama is explicitly enabled for the test session; unit tests mock the AI service so the suite stays fast and deterministic.
+The skipped test is an opt-in live Ollama integration test. AI calls are mocked elsewhere, keeping the suite fast and deterministic.
 
 Frontend checks:
 
@@ -221,66 +625,83 @@ npm run lint
 npm run build
 ```
 
-`npm run build` produces a production bundle in `frontend/dist/`. Vite reports a chunk-size warning because the application is a single bundle; this is a known optimization opportunity, not a build failure.
+`npm run build` writes the production bundle to `frontend/dist/`. Vite reports a chunk-size warning because the application is currently a single bundle; this is a known optimization opportunity, not a build failure.
 
 ---
 
-## API overview
+## Project structure
 
-All project routes require a Bearer token and return only the caller's own projects.
+```text
+backend/app/
+├── api/
+│   ├── dependencies.py           JWT → current user
+│   └── routes/
+│       ├── auth.py               Signup, login, current user
+│       ├── users.py              Profile, password, account deletion
+│       ├── projects.py           CRUD, analysis, summary
+│       ├── uploads.py            ZIP import
+│       ├── github.py             GitHub import
+│       ├── files.py              File list, tree, content
+│       ├── chat.py               Questions and conversations
+│       ├── documentation.py      Generate, read, status
+│       ├── architecture.py       Facts and AI explanation
+│       ├── graph.py              Dependency graph
+│       └── apis.py               API detection and metrics
+├── core/                         Settings, JWT, password hashing
+├── database/                     Engine, session, Base
+├── models/                       SQLAlchemy models
+├── schemas/                      Pydantic schemas
+└── services/                     Import, analysis, AI, storage logic
 
-| Method | Path | Purpose |
-| --- | --- | --- |
-| `POST` | `/api/auth/signup` | Create an account |
-| `POST` | `/api/auth/login` | Obtain a JWT |
-| `GET` | `/api/auth/me` | Current user |
-| `GET` / `POST` | `/api/projects/` | List or create projects |
-| `GET` | `/api/projects/summary` | Projects with file counts |
-| `GET` / `PATCH` / `DELETE` | `/api/projects/{id}` | Read, update or delete a project |
-| `POST` | `/api/uploads/zip` | Import a ZIP archive |
-| `POST` | `/api/github/import` | Import a public GitHub repository |
-| `POST` | `/api/projects/{id}/analyze` | Run code analysis |
-| `GET` | `/api/projects/{id}/analysis` | Symbols, dependencies and technologies |
-| `GET` | `/api/projects/{id}/files` | Paginated file inventory |
-| `GET` | `/api/projects/{id}/file-tree` | Nested folder tree |
-| `GET` | `/api/projects/{id}/files/{file_id}/content` | File source content |
-| `GET` | `/api/projects/{id}/architecture` | Architecture summary and optional AI explanation |
-| `GET` | `/api/projects/{id}/graph` | Internal dependency graph |
-| `GET` | `/api/projects/{id}/apis` | Detected HTTP endpoints |
-| `GET` | `/api/projects/{id}/metrics` | Project metrics |
-| `POST` | `/api/projects/{id}/chat` | Ask a question about the codebase |
-| `GET` | `/api/projects/{id}/chats` | Conversation list |
-| `GET` | `/api/projects/{id}/chats/{conversation_id}` | Conversation messages |
-| `POST` / `GET` | `/api/projects/{id}/documentation` | Generate or read documentation |
-| `GET` | `/api/projects/{id}/documentation/status` | Documentation status |
-
----
-
-## Security notes
-
-- Imported code is parsed and searched as text; it is never imported or executed.
-- ZIP extraction validates archive members and blocks unsafe paths and oversized archives.
-- Project storage folders are resolved inside the configured upload area, and deletion only removes the owner's own import folder.
-- Every project endpoint checks project ownership and returns `404` for projects the caller does not own.
-- Uploaded files are scanned with a sensitive-file filter before route detection reads them.
-- Secrets are read from environment files that are git-ignored; no credentials are committed.
+frontend/src/
+├── components/
+│   ├── chat/                     Chat input, messages, window, sources
+│   ├── common/                   Layout, navigation, states
+│   ├── dashboard/                Cards and project cards
+│   ├── documentation/            Markdown viewer
+│   ├── explorer/                 File tree, file list, code viewer
+│   ├── graph/                    React Flow graph
+│   └── upload/                   ZIP and GitHub import forms
+├── context/                      Auth provider
+├── hooks/                        useAuth
+├── pages/                        Route-level pages
+├── services/                     Axios clients
+└── utils/                        Formatting, tree building, explanation cache
+```
 
 ---
 
 ## Known limitations
 
-- API endpoint detection is pattern-based. Routes created dynamically or through unsupported frameworks may not be found.
-- Framework detection depends on manifest and import evidence; a library listed in a manifest is not treated as the project's web framework.
-- Generated documentation and chat answers depend on the local model. Output can be incomplete or contain mistakes even though setup context is supplied; the documentation view strips links and boilerplate sections, not factual errors.
-- The dependency graph currently covers internal resolved file references; external packages are shown in the dependencies list but not as graph nodes.
-- The frontend is built as a single bundle, so the initial download is larger than ideal.
-- There is no browser-based end-to-end test suite in the repository; verification is done through the backend API and manual UI checks.
+- **AI output is probabilistic.** Chat answers, documentation and explanations can be incomplete or incorrect even with project context. Sanitizing removes links and boilerplate, not factual errors.
+- **Ollama is required for AI features.** Chat, documentation generation and architecture explanations return `503` when the local model is unavailable.
+- **API detection is pattern-based.** Dynamically registered routes or unsupported frameworks may be missed.
+- **Framework detection is evidence-based.** A library in a manifest is not automatically treated as the project's web framework.
+- **Dependency graph scope.** Only internal resolved file imports become graph edges; external packages appear in the dependencies list but not as graph nodes.
+- **Language coverage.** Symbol extraction depends on tree-sitter grammar availability; unsupported languages receive generic file/chunk handling.
+- **No email verification or password reset by email.** Password changes require the current password. There is no forgot-password flow.
+- **No token refresh or server-side revocation.** Tokens expire after the configured lifetime; logging out only removes the browser token.
+- **Single access token in `localStorage`.** This is convenient for local use but is not hardened against XSS in a public deployment.
+- **No public-deployment hardening.** CORS, TLS termination, rate limiting, audit logging and multi-tenant isolation beyond per-user ownership are not implemented.
+- **Single frontend bundle.** The initial JavaScript download is larger than ideal.
+- **No browser E2E suite.** Verification is done through backend tests, production builds, linting and manual UI checks.
+- **Local model cost.** Large repositories can exceed the model context window; retrieval narrows context, but answers may still omit relevant code.
 
 ---
 
 ## Development notes
 
-- Database schema changes should go through Alembic (`alembic revision --autogenerate -m "..."` from `backend/`).
+- Schema changes go through Alembic:
+
+  ```bash
+  cd backend
+  alembic revision --autogenerate -m "describe the change"
+  alembic upgrade head
+  ```
+
 - Keep new project routes behind `get_current_user` and verify ownership before reading project data.
 - Backend tests live in `backend/tests/` and use fixtures from `conftest.py`.
-- Imported project sources live under `backend/app/storage/projects/` and are excluded from version control.
+- Imported sources live under `backend/app/storage/projects/` and must stay out of version control.
+- After changing backend dependencies, run `pip install -r requirements.txt` inside the virtual environment.
+- The frontend uses custom CSS rather than a component library; keep page styles consistent with neighbouring pages.
+- Do not commit `.env` files, uploaded sources or generated build output.

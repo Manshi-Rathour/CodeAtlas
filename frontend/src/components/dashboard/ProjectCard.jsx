@@ -21,6 +21,23 @@ function ProjectCard({ project, onDelete }) {
 
     const isGithub = project?.source_type === 'github'
 
+    // A project only counts as ready once codebase analysis has run.
+    const statusKey = project?.has_analysis
+        ? 'analyzed'
+        : project?.status === 'failed'
+            ? 'failed'
+            : project?.status === 'importing'
+                ? 'importing'
+                : 'awaiting-analysis'
+
+    const statusLabel = project?.has_analysis
+        ? 'Completed'
+        : project?.status === 'failed'
+            ? 'Failed'
+            : project?.status === 'importing'
+                ? 'Importing'
+                : 'Awaiting analysis'
+
     const formattedDate = project?.created_at
         ? new Date(project.created_at).toLocaleDateString()
         : 'Recently added'
@@ -68,9 +85,9 @@ function ProjectCard({ project, onDelete }) {
                     )}
                 </div>
 
-                <span className={`project-status status-${project?.status || 'unknown'}`}>
+                <span className={`project-status status-${statusKey}`}>
                     <span className="status-indicator"></span>
-                    {project?.status || 'Unknown'}
+                    {statusLabel}
                 </span>
             </div>
 

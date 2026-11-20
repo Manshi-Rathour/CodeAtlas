@@ -35,19 +35,7 @@ function formatBytes(bytes) {  if (!bytes) return '0 B'
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-function formatDate(value) {
-  if (!value) return 'Not generated yet'
-
-  return new Date(value).toLocaleString('en-IN', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
-function StatCard({ icon: Icon, label, value, detail }) {
+function StatCard({ icon: Icon, label, value }) {
   return (
     <div className="api-stat-card">
       <div className="api-stat-icon">
@@ -57,7 +45,6 @@ function StatCard({ icon: Icon, label, value, detail }) {
       <div>
         <span>{label}</span>
         <strong>{value}</strong>
-        {detail && <small>{detail}</small>}
       </div>
     </div>
   )
@@ -69,7 +56,6 @@ function ApiExplorerPage() {
 
   const [endpoints, setEndpoints] = useState([])
   const [metrics, setMetrics] = useState(null)
-  const [frameworks, setFrameworks] = useState([])
 
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
@@ -89,7 +75,6 @@ function ApiExplorerPage() {
       ])
 
       setEndpoints(apiResponse.endpoints || [])
-      setFrameworks(apiResponse.frameworks || [])
       setMetrics(metricsResponse)
     } catch (err) {
       setError(
@@ -175,12 +160,6 @@ function ApiExplorerPage() {
     )
   }
 
-  const symbolCoverage = metrics.total_files
-    ? Math.round(
-        (metrics.symbols.files_with_symbols / metrics.total_files) * 100
-      )
-    : 0
-
   const topLanguages = (metrics.languages || []).slice(0, 6)
   const biggestLanguage = Math.max(
     ...topLanguages.map((language) => language.files),
@@ -241,41 +220,31 @@ function ApiExplorerPage() {
               icon={Route}
               label="API Endpoints"
               value={endpoints.length}
-              detail={
-                frameworks.length
-                  ? frameworks.join(', ')
-                  : 'No framework routes found'
-              }
             />
             <StatCard
               icon={Files}
               label="Files"
               value={metrics.total_files.toLocaleString('en-IN')}
-              detail={formatBytes(metrics.total_bytes)}
             />
             <StatCard
               icon={Braces}
-              label="Symbols"
+              label="Functions and Classes"
               value={metrics.symbols.total.toLocaleString('en-IN')}
-              detail={`${symbolCoverage}% of files have symbols`}
             />
             <StatCard
               icon={GitBranch}
               label="Dependencies"
               value={metrics.dependencies.total.toLocaleString('en-IN')}
-              detail={`${metrics.dependencies.resolved} resolved internally`}
             />
             <StatCard
               icon={MessagesSquare}
               label="Conversations"
               value={metrics.conversations}
-              detail="AI chat threads"
             />
             <StatCard
               icon={BookOpen}
               label="Documentation"
               value={metrics.documentation.exists ? 'Ready' : 'Missing'}
-              detail={formatDate(metrics.documentation.updated_at)}
             />
           </section>
 
@@ -406,8 +375,8 @@ function ApiExplorerPage() {
                   Analysis Metrics
                 </h2>
                 <p>
-                  Symbols, chunks and dependency resolution from the last
-                  stored analysis run.
+                  Functions, classes, chunks and dependency resolution from
+                  the last stored analysis run.
                 </p>
               </div>
             </div>
@@ -456,7 +425,7 @@ function ApiExplorerPage() {
               <div className="api-metric-panel">
                 <h3>
                   <Braces size={17} />
-                  Code Symbols
+                  Functions and Classes
                 </h3>
 
                 <div className="api-symbol-grid">

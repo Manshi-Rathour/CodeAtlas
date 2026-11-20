@@ -30,7 +30,9 @@ def remove_project_storage(
     upload_root = _upload_root()
 
     try:
-        project_root = Path(root_path).resolve(strict=True)
+        # Resolve without requiring the path to exist, so a storage folder
+        # can still be removed if the source folder was moved or lost.
+        project_root = Path(root_path).resolve()
         relative_parts = project_root.relative_to(upload_root).parts
     except (OSError, ValueError):
         return
@@ -45,6 +47,15 @@ def remove_project_storage(
     storage_folder = upload_root / relative_parts[0] / relative_parts[1]
 
     shutil.rmtree(storage_folder, ignore_errors=True)
+
+    # Remove the owner's folder once it no longer holds any project.
+    user_folder = upload_root / relative_parts[0]
+
+    try:
+        user_folder.rmdir()
+    except OSError:
+        # The folder is not empty or is already gone.
+        pass
 
 
 def remove_user_storage(user_id: int) -> None:

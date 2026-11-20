@@ -79,13 +79,14 @@ function DashboardPage() {
         fetchDashboardData()
     }, [])
 
+    // Imported projects stay "in progress" until codebase analysis has run.
     const completedProjects = projects.filter(
-        (project) => project.status === 'ready'
+        (project) => project.has_analysis
     ).length
 
     const processingProjects = projects.filter(
         (project) =>
-            !['ready', 'failed'].includes(project.status)
+            !project.has_analysis && project.status !== 'failed'
     ).length
 
     const firstName = user?.full_name?.split(' ')[0] || 'Developer'
@@ -148,7 +149,7 @@ function DashboardPage() {
                         <StatCard
                             title="Completed"
                             value={completedProjects}
-                            description="Successfully imported projects"
+                            description="Projects with completed analysis"
                             icon={CheckCircle2}
                             accent="green"
                         />
@@ -156,7 +157,7 @@ function DashboardPage() {
                         <StatCard
                             title="In Progress"
                             value={processingProjects}
-                            description="Projects being processed"
+                            description="Projects awaiting codebase analysis"
                             icon={LoaderCircle}
                             accent="orange"
                         />
