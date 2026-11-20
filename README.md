@@ -91,6 +91,7 @@ Everything runs locally: PostgreSQL in Docker (recommended), a FastAPI backend, 
 
 - React 19 + Vite single-page application.
 - Dashboard with project summaries (file counts fetched in one request) and a count of projects that have completed analysis versus those still awaiting it.
+- Project cards label a project **Completed** once analysis has run and **Awaiting analysis** before that; the Overview page shows a guidance notice with a **Go to analysis** shortcut until analysis is started.
 - File explorer with a nested folder tree, language filter and search.
 - Monaco-based source viewer.
 - React Flow dependency graph.
@@ -103,38 +104,54 @@ Everything runs locally: PostgreSQL in Docker (recommended), a FastAPI backend, 
 
 ```text
 CodeAtlas/
-├── backend/                     FastAPI application
-│   ├── alembic/                 Database migrations
+├── backend/                          FastAPI application
+│   ├── alembic/                      Migration environment
+│   │   ├── env.py                    Alembic runtime configuration
+│   │   ├── script.py.mako            Revision template
+│   │   └── versions/                 Nine schema revisions (users → projects →
+│   │                                 files → symbols → chunks → dependencies →
+│   │                                 chats → documentation)
 │   ├── app/
+│   │   ├── main.py                   FastAPI app, CORS, router registration
 │   │   ├── api/
-│   │   │   ├── dependencies.py  Current-user dependency
-│   │   │   └── routes/          HTTP routers (auth, users, projects, uploads,
-│   │   │                        github, files, chat, documentation,
-│   │   │                        architecture, graph, apis)
-│   │   ├── core/                Settings and security helpers
-│   │   ├── database/            SQLAlchemy engine, session, base
-│   │   ├── models/              ORM models
-│   │   ├── schemas/             Pydantic request/response schemas
+│   │   │   ├── dependencies.py       JWT → current user
+│   │   │   └── routes/               auth, users, projects, uploads, github,
+│   │   │                             files, chat, documentation, architecture,
+│   │   │                             graph, apis
+│   │   ├── core/
+│   │   │   ├── config.py             Environment settings
+│   │   │   └── security.py           JWT issuing/verification, Argon2 hashing
+│   │   ├── database/
+│   │   │   ├── base.py               Declarative base
+│   │   │   └── connection.py         Engine, SessionLocal, get_db
+│   │   ├── models/                   users, projects, project_files,
+│   │   │                             code_symbols, code_chunks, dependencies,
+│   │   │                             chats, documentation
+│   │   ├── schemas/                  Per-feature Pydantic request/response models
 │   │   ├── services/
-│   │   │   ├── ai/              Ollama client, chat and prompts
-│   │   │   ├── analysis/        Scanning, parsing, symbols, chunks,
-│   │   │   │                    imports, dependencies, frameworks, APIs, metrics
-│   │   │   ├── architecture/    Facts + AI explanation
-│   │   │   ├── documentation/   Documentation generation and sanitizing
-│   │   │   ├── search/          Chunking and retrieval
-│   │   │   └── source/          ZIP/GitHub import and storage cleanup
-│   │   └── storage/projects/    Extracted sources (git-ignored)
-│   └── tests/                   Pytest suite
-├── frontend/                    React + Vite application
-│   └── src/
-│       ├── components/          Shared UI (chat, common, dashboard, explorer, graph)
-│       ├── context/             Auth context
-│       ├── hooks/               useAuth
-│       ├── pages/               Route-level pages
-│       ├── services/            Axios API clients
-│       └── utils/               Formatting, tree building, caches, constants
-├── docker-compose.yml           Local PostgreSQL 17 service
-├── .env.example                 Root PostgreSQL credentials for Docker
+│   │   │   ├── ai/                   Ollama client, chat service, prompt builder
+│   │   │   ├── analysis/             Scan, parse, extract symbols/chunks/imports,
+│   │   │   │                         resolve dependencies, detect frameworks,
+│   │   │   │                         APIs and metrics, build file inventory
+│   │   │   ├── architecture/         Structural facts + optional AI explanation
+│   │   │   ├── documentation/        Generation, grounding and sanitizing
+│   │   │   ├── search/               Retrieval over stored chunks
+│   │   │   └── source/               ZIP upload, GitHub import, extraction,
+│   │   │                             storage paths and cleanup
+│   │   └── storage/projects/         Extracted sources (git-ignored)
+│   ├── tests/                        Pytest suite (conftest + 17 modules)
+│   ├── alembic.ini
+│   └── requirements.txt
+├── frontend/                         React + Vite application
+│   ├── public/                       Static assets (network.svg)
+│   ├── src/                          See Project structure below
+│   ├── index.html
+│   ├── package.json
+│   ├── vite.config.js
+│   └── .oxlintrc.json
+├── docker-compose.yml                Local PostgreSQL 17 service
+├── .env.example                      Docker Compose database credentials
+├── .gitignore
 └── README.md
 ```
 
@@ -204,7 +221,7 @@ backend/app/storage/projects/
 | AI | Local Ollama server (`qwen2.5-coder:7b` in `.env.example`) |
 | Frontend | React 19, React Router 7, Vite 8 |
 | HTTP client | Axios |
-| UI and icons | Lucide React, custom CSS |
+| UI and icons | Lucide React, hand-written CSS, Tailwind CSS 4 (Vite plugin) |
 | Visualization | React Flow (`@xyflow/react`), Monaco Editor |
 | Markdown | `react-markdown` |
 | Testing | Pytest, HTTPX, FastAPI TestClient, Vitest (installed) |
@@ -369,19 +386,20 @@ Environment files are git-ignored. Never commit real secrets.
    - upload a `.zip` file, or
    - paste a public GitHub repository URL and optional branch.
 3. **Open the project** from the dashboard or **My Projects**.
-4. **Explore:**
-   - **Overview** – languages, frameworks, counts and extracted symbols.
+4. **Run codebase analysis** from the project **Overview** page before exploring. While a project has not been analyzed, the Overview shows a notice pointing to the **Codebase Analysis** section; dependencies, detected APIs, metrics, architecture details and the graph stay empty until **Run Analysis** completes.
+5. **Explore:**
+   - **Overview** – languages, frameworks, counts, extracted symbols and the analysis action.
    - **Files** – folder tree, file list, filters and source viewer.
    - **Architecture** – structural facts and an optional AI explanation.
    - **Documentation** – generate or read AI documentation.
    - **Dependencies** – internal import graph.
    - **Chat** – ask questions; answers cite source files and line ranges.
    - **APIs & Metrics** – detected HTTP endpoints and project statistics.
-5. **Manage your account** by clicking your email/avatar in the topbar or your user block in the sidebar:
+6. **Manage your account** by clicking your email/avatar in the topbar or your user block in the sidebar:
    - update your display name,
    - change your password,
    - delete your account.
-6. **Delete a project** from its page or the project list. Its extracted source folder is removed from local storage. Deleting your account removes all owned projects and the entire per-user storage folder.
+7. **Delete a project** from its page or the project list. Its extracted source folder is removed from local storage. Deleting your account removes all owned projects and the entire per-user storage folder.
 
 ---
 
@@ -467,6 +485,8 @@ No email verification is involved in password changes. After account deletion, t
 
 `source_type` is one of `manual`, `zip` or `github` and defaults to `manual`. Names are 2–150 characters; descriptions are up to 2000 characters.
 
+`status` progresses from `created` to `ready` once the file inventory exists, then to `analyzed` after a successful analysis run; failed imports are stored as `failed`. In the summary response, `has_analysis` is `true` when the status is `analyzed` or analysis chunks already exist, which is how the dashboard separates completed projects from those still awaiting analysis.
+
 **Project response shape**
 
 ```json
@@ -477,7 +497,7 @@ No email verification is involved in password changes. After account deletion, t
   "description": null,
   "source_type": "zip",
   "repository_url": null,
-  "status": "ready",
+  "status": "analyzed",
   "created_at": "2026-01-01T10:00:00Z",
   "updated_at": "2026-01-01T10:00:00Z"
 }
@@ -632,42 +652,158 @@ npm run build
 ## Project structure
 
 ```text
-backend/app/
-├── api/
-│   ├── dependencies.py           JWT → current user
-│   └── routes/
-│       ├── auth.py               Signup, login, current user
-│       ├── users.py              Profile, password, account deletion
-│       ├── projects.py           CRUD, analysis, summary
-│       ├── uploads.py            ZIP import
-│       ├── github.py             GitHub import
-│       ├── files.py              File list, tree, content
-│       ├── chat.py               Questions and conversations
-│       ├── documentation.py      Generate, read, status
-│       ├── architecture.py       Facts and AI explanation
-│       ├── graph.py              Dependency graph
-│       └── apis.py               API detection and metrics
-├── core/                         Settings, JWT, password hashing
-├── database/                     Engine, session, Base
-├── models/                       SQLAlchemy models
-├── schemas/                      Pydantic schemas
-└── services/                     Import, analysis, AI, storage logic
+backend/
+├── alembic.ini
+├── alembic/
+│   ├── env.py
+│   ├── script.py.mako
+│   └── versions/
+│       ├── b7d44c241201_create_users_table.py
+│       ├── f8dc37b511ae_create_projects_table.py
+│       ├── 0f808623a9eb_add_project_files_table.py
+│       ├── ba423f05e89b_add_code_symbols_table.py
+│       ├── 97c64ca78e1a_add_code_chunks_table.py
+│       ├── 9221d311bac7_add_dependencies_table.py
+│       ├── 15962fab8837_add_resolved_file_to_dependencies.py
+│       ├── cb39a4238632_add_chat_messages_table.py
+│       └── be1dbfeea9ad_add_project_documentation_table.py
+├── requirements.txt
+├── tests/                          Pytest suite
+│   ├── conftest.py                 In-memory DB and shared fixtures
+│   ├── test_auth.py                Signup, login, current user
+│   ├── test_users.py               Profile, password, account deletion
+│   ├── test_projects.py            CRUD, analysis, summary, storage cleanup
+│   ├── test_upload.py              ZIP validation and extraction
+│   ├── test_github.py              Repository import
+│   ├── test_files.py               File inventory and source viewer
+│   ├── test_parsers.py             Language detection and tree-sitter parsing
+│   ├── test_dependencies.py        Import extraction and resolution
+│   ├── test_framework_detection.py Framework and technology detection
+│   ├── test_search.py              Chunking and retrieval
+│   ├── test_architecture.py        Architecture facts and explanation
+│   ├── test_graph.py               Dependency graph
+│   ├── test_apis.py                Endpoint detection and metrics
+│   ├── test_chat.py                Conversations and source references
+│   ├── test_documentation.py       Generation, sanitizing and status
+│   ├── test_ollama.py              AI client behaviour and failures
+│   └── test_ollama_integration.py  Opt-in live test (skipped by default)
+└── app/
+    ├── main.py                     App factory, CORS, router registration
+    ├── api/
+    │   ├── dependencies.py         JWT → current user
+    │   └── routes/
+    │       ├── auth.py             Signup, login, current user
+    │       ├── users.py            Profile, password, account deletion
+    │       ├── projects.py         CRUD, analysis run/results, summaries
+    │       ├── uploads.py          ZIP import
+    │       ├── github.py           GitHub import
+    │       ├── files.py            File list, tree, content
+    │       ├── chat.py             Questions and conversations
+    │       ├── documentation.py    Generate, read, status
+    │       ├── architecture.py     Facts and AI explanation
+    │       ├── graph.py            Dependency graph
+    │       └── apis.py             API detection and metrics
+    ├── core/
+    │   ├── config.py               Environment-backed settings
+    │   └── security.py             JWT and password hashing
+    ├── database/
+    │   ├── base.py                 Declarative base
+    │   └── connection.py           Engine, session factory, get_db
+    ├── models/
+    │   ├── user.py
+    │   ├── project.py
+    │   ├── project_file.py
+    │   ├── code_symbol.py
+    │   ├── code_chunk.py
+    │   ├── dependency.py
+    │   ├── chat.py
+    │   └── documentation.py
+    ├── schemas/
+    │   ├── auth.py
+    │   ├── analysis.py
+    │   ├── chat.py
+    │   ├── documentation.py
+    │   ├── project.py
+    │   └── project_file.py
+    ├── services/
+    │   ├── ai/
+    │   │   ├── ollama_service.py   HTTP client for the local model
+    │   │   ├── chat_service.py     Retrieval, history and generation
+    │   │   └── prompt_builder.py   Grounded prompt assembly
+    │   ├── analysis/
+    │   │   ├── analysis_service.py        Orchestrates a full run
+    │   │   ├── file_inventory_service.py  Builds file records
+    │   │   ├── file_scanner.py            Walks and filters sources
+    │   │   ├── parser_manager.py          Chooses grammar per language
+    │   │   ├── tree_sitter_parser.py      Tree-sitter wrapper
+    │   │   ├── symbol_extractor.py        Functions, methods, classes
+    │   │   ├── chunk_extractor.py         Structural chunks
+    │   │   ├── generic_chunk_extractor.py Fallback chunking
+    │   │   ├── dependency_extractor.py    Imports per file
+    │   │   ├── dependency_resolver.py     Internal path resolution
+    │   │   ├── dependency_analyzer.py     Dependency records
+    │   │   ├── framework_detector.py      Framework/technology detection
+    │   │   ├── api_detector.py            HTTP route patterns
+    │   │   └── metrics_service.py         Project metrics
+    │   ├── architecture/
+    │   │   ├── architecture_service.py              Structural facts
+    │   │   └── architecture_explanation_service.py  Optional AI narrative
+    │   ├── documentation/
+    │   │   └── documentation_service.py   Grounding, generation, sanitizing
+    │   ├── search/
+    │   │   └── search_service.py          Retrieval over stored chunks
+    │   └── source/
+    │       ├── import_service.py          Import orchestration
+    │       ├── upload_service.py          Upload validation and storage
+    │       ├── github_service.py          Archive download
+    │       ├── zip_extractor.py           Safe extraction
+    │       └── storage_service.py         Path resolution and cleanup
+    └── storage/projects/                  Extracted sources (git-ignored)
 
-frontend/src/
-├── components/
-│   ├── chat/                     Chat input, messages, window, sources
-│   ├── common/                   Layout, navigation, states
-│   ├── dashboard/                Cards and project cards
-│   ├── documentation/            Markdown viewer
-│   ├── explorer/                 File tree, file list, code viewer
-│   ├── graph/                    React Flow graph
-│   └── upload/                   ZIP and GitHub import forms
-├── context/                      Auth provider
-├── hooks/                        useAuth
-├── pages/                        Route-level pages
-├── services/                     Axios clients
-└── utils/                        Formatting, tree building, explanation cache
+frontend/
+├── index.html
+├── package.json
+├── vite.config.js
+├── .oxlintrc.json
+├── public/network.svg
+└── src/
+    ├── main.jsx
+    ├── App.jsx
+    ├── App.css
+    ├── index.css
+    ├── components/
+    │   ├── chat/          ChatWindow, ChatInput, ChatMessage, SourceReference
+    │   ├── common/        Sidebar, DashboardTopbar, Navbar, ProjectNav,
+    │   │                  ProtectedRoute, CollapsibleSection, EmptyState,
+    │   │                  ErrorMessage, LoadingSpinner
+    │   ├── dashboard/     StatCard, ProjectCard
+    │   ├── documentation/ MarkdownViewer
+    │   ├── explorer/      FileTree, FileTreeNode, CodeViewer, SymbolList
+    │   ├── graph/         DependencyGraph (React Flow)
+    │   └── upload/        ZipUpload, GitHubImport, ImportStatus
+    ├── context/
+    │   └── AuthContext.jsx
+    ├── hooks/
+    │   └── useAuth.js
+    ├── pages/             LandingPage, LoginPage, SignupPage, DashboardPage,
+    │                      AllProjectsPage, CreateProjectPage,
+    │                      ProjectOverviewPage, FileExplorerPage,
+    │                      ArchitecturePage, DependencyGraphPage,
+    │                      ApiExplorerPage, DocumentationPage,
+    │                      CodebaseChatPage, ProfilePage
+    ├── services/          api (Axios instance), authService, projectService,
+    │                      uploadService, analysisService,
+    │                      architectureService, graphService,
+    │                      documentationService, chatService
+    └── utils/             constants, formatters, buildFileTree,
+                           architectureExplanationCache
 ```
+
+Notes:
+
+- Each page and most components keep their styles in a sibling `.css` file. Tailwind CSS 4 is installed and imported in `src/index.css`, while layout and theming are written as explicit classes in those stylesheets.
+- A few zero-byte modules are reserved placeholders and are not imported anywhere: `app/core/constants.py`, `app/utils/*.py`, `app/models/analysis_run.py`, `app/models/api_endpoint.py`, `app/schemas/user.py`, `app/schemas/upload.py`, `app/schemas/symbol.py`, `app/services/analysis/language_detector.py`, `app/services/analysis/import_extractor.py`, `app/services/source/source_service.py` and `app/services/search/code_chunker.py`.
+- Analysis endpoints live in `routes/projects.py` (`POST /{project_id}/analyze`, `GET /{project_id}/analysis`); there is no separate analysis router.
 
 ---
 
