@@ -1,12 +1,11 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
-  LayoutDashboard,
-  FolderKanban,
   LogOut,
   Network,
 } from 'lucide-react'
 
 import useAuth from '../../hooks/useAuth'
+import { workspaceNavigation } from '../../utils/navigation'
 import './Sidebar.css'
 
 function Sidebar() {
@@ -14,20 +13,7 @@ function Sidebar() {
   const navigate = useNavigate()
 
   // Project tools are opened from the project tabs on each project page.
-  const navigationItems = [
-    {
-      label: 'Overview',
-      path: '/dashboard',
-      icon: LayoutDashboard,
-      available: true,
-    },
-    {
-      label: 'My Projects',
-      path: '/dashboard/projects',
-      icon: FolderKanban,
-      available: true,
-    },
-  ]
+  const navigationItems = workspaceNavigation
 
   const handleLogout = () => {
     logout()

@@ -796,7 +796,7 @@ frontend/
     │                      architectureService, graphService,
     │                      documentationService, chatService
     └── utils/             constants, formatters, buildFileTree,
-                           architectureExplanationCache
+                           architectureExplanationCache, navigation
 ```
 
 Notes:
