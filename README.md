@@ -80,23 +80,6 @@ The platform runs locally using PostgreSQL, FastAPI, React, and optional Ollama 
 
 <img src="Webpage_images/profile.png" alt="User profile" width="650">
 
-### Request flow
-
-```text
-React page
-   │  Axios (Bearer JWT)
-   ▼
-FastAPI router  ──verifies user + project ownership──► SQLAlchemy session
-   │
-   ▼
-Service layer
-   ├── source/         import + extract + delete local folders
-   ├── analysis/       read source text, build symbols/chunks/dependencies
-   ├── architecture/   database facts + optional Ollama explanation
-   ├── documentation/  retrieve grounding context + Ollama + sanitize
-   └── ai/             retrieve chunks + conversation history + Ollama
-```
-
 ### Database tables
 
 | Table | Purpose |
