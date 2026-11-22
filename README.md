@@ -1,6 +1,6 @@
 # CodeAtlas
 
-CodeAtlas is a local-first, full-stack codebase understanding platform. Import a project from a ZIP archive or a public GitHub repository, analyze it on your machine, and explore its files, symbols, architecture, dependencies, detected HTTP APIs, metrics, generated documentation, and an AI assistant that answers questions about the code.
+CodeAtlas is a codebase intelligence platform. Import a project from a ZIP archive or a public GitHub repository, analyze it on your machine, and explore its files, symbols, architecture, dependencies, detected HTTP APIs, metrics, generated documentation, and an AI assistant that answers questions about the code.
 
 Imported source code is scanned strictly as text. It is **never installed, imported as a module, or executed**.
 
