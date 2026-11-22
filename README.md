@@ -24,16 +24,16 @@ The platform runs locally using PostgreSQL, FastAPI, React, and optional Ollama 
 
 ### Authentication and Account
 
-![Login page](Webpage_images/login.png)
+<img src="Webpage_images/login.png" alt="Login page" width="650">
 
-![Signup page](Webpage_images/signup.png)
+<img src="Webpage_images/signup.png" alt="Signup page" width="650">
 - JWT-based signup and login with Argon2 password hashing.
 - Protected routes and session validation.
 - Profile management, password changes, and account deletion.
 
 ### Project Import
 
-![Project upload](Webpage_images/upload.png)
+<img src="Webpage_images/upload.png" alt="Project upload" width="650">
 - Secure ZIP extraction with path traversal, symlink, and size protections.
 - Public GitHub repository import with branch selection.
 - File metadata and per-user project storage in PostgreSQL and local storage.
@@ -54,35 +54,31 @@ The platform runs locally using PostgreSQL, FastAPI, React, and optional Ollama 
 
 ### Frontend Experience
 
-![Dashboard](Webpage_images/dashboard.png)
+<img src="Webpage_images/dashboard.png" alt="Dashboard" width="650">
 
-![All projects](Webpage_images/allprojects.png)
+<img src="Webpage_images/allprojects.png" alt="All projects" width="650">
 
-![Project overview](Webpage_images/projectOverview1.png)
+<img src="Webpage_images/projectOverview1.png" alt="Project overview" width="650">
 
-![Project overview details](Webpage_images/projectOverview2.png)
+<img src="Webpage_images/projectOverview2.png" alt="Project overview details" width="650">
 
-![File explorer and source viewer](Webpage_images/files.png)
+<img src="Webpage_images/files.png" alt="File explorer and source viewer" width="650">
 
-![Architecture overview](Webpage_images/architecture1.png)
+<img src="Webpage_images/aichat.png" alt="AI codebase chat" width="650">
 
-![Architecture details](Webpage_images/architecture2.png)
+<img src="Webpage_images/architecture1.png" alt="Architecture overview" width="650">
 
-![Dependency graph](Webpage_images/graph.png)
+<img src="Webpage_images/architecture2.png" alt="Architecture details" width="650">
 
-![API explorer](Webpage_images/api1.png)
+<img src="Webpage_images/documentation.png" alt="Generated documentation" width="650">
 
-![API details](Webpage_images/api2.png)
+<img src="Webpage_images/graph.png" alt="Dependency graph" width="650">
 
-![Generated documentation](Webpage_images/documentation.png)
+<img src="Webpage_images/api1.png" alt="API explorer" width="650">
 
-![AI codebase chat](Webpage_images/aichat.png)
+<img src="Webpage_images/api2.png" alt="API details" width="650">
 
-![User profile](Webpage_images/profile.png)
-- Dashboard with project summaries and analysis status.
-- Searchable file explorer with nested folders and language filters.
-- Monaco-based source viewer and React Flow dependency graph.
-- Dedicated pages for architecture, documentation, chat, APIs, metrics, and profiles.
+<img src="Webpage_images/profile.png" alt="User profile" width="650">
 
 ### Request flow
 
