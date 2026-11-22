@@ -183,16 +183,6 @@ Run this from `backend/` with the virtual environment active. Re-run it after pu
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Useful URLs:
-
-| URL | Purpose |
-| --- | --- |
-| `http://127.0.0.1:8000/` | API root |
-| `http://127.0.0.1:8000/health` | Application health |
-| `http://127.0.0.1:8000/health/database` | Database connectivity |
-| `http://127.0.0.1:8000/docs` | Swagger UI |
-| `http://127.0.0.1:8000/redoc` | ReDoc |
-
 ### 6. Start the frontend
 
 In a second terminal:
