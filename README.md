@@ -27,6 +27,7 @@ The platform runs locally using PostgreSQL, FastAPI, React, and optional Ollama 
 <img src="Webpage_images/login.png" alt="Login page" width="650">
 
 <img src="Webpage_images/signup.png" alt="Signup page" width="650">
+
 - JWT-based signup and login with Argon2 password hashing.
 - Protected routes and session validation.
 - Profile management, password changes, and account deletion.
@@ -34,6 +35,7 @@ The platform runs locally using PostgreSQL, FastAPI, React, and optional Ollama 
 ### Project Import
 
 <img src="Webpage_images/upload.png" alt="Project upload" width="650">
+
 - Secure ZIP extraction with path traversal, symlink, and size protections.
 - Public GitHub repository import with branch selection.
 - File metadata and per-user project storage in PostgreSQL and local storage.
