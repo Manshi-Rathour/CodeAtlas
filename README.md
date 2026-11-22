@@ -4,6 +4,8 @@ CodeAtlas is a codebase intelligence platform. Import a project from a ZIP archi
 
 ## Overview
 
+![CodeAtlas landing page](Webpage_images/landingpage.png)
+
 CodeAtlas helps developers understand unfamiliar repositories by transforming ZIP files or public GitHub repositories into searchable, interactive codebase maps.
 
 1. Import a project through ZIP or GitHub.
@@ -21,11 +23,17 @@ The platform runs locally using PostgreSQL, FastAPI, React, and optional Ollama 
 ## Features
 
 ### Authentication and Account
+
+![Login page](Webpage_images/login.png)
+
+![Signup page](Webpage_images/signup.png)
 - JWT-based signup and login with Argon2 password hashing.
 - Protected routes and session validation.
 - Profile management, password changes, and account deletion.
 
 ### Project Import
+
+![Project upload](Webpage_images/upload.png)
 - Secure ZIP extraction with path traversal, symlink, and size protections.
 - Public GitHub repository import with branch selection.
 - File metadata and per-user project storage in PostgreSQL and local storage.
@@ -45,6 +53,32 @@ The platform runs locally using PostgreSQL, FastAPI, React, and optional Ollama 
 - **Architecture Explanation:** Generates on-demand AI explanations with browser-side caching.
 
 ### Frontend Experience
+
+![Dashboard](Webpage_images/dashboard.png)
+
+![All projects](Webpage_images/allprojects.png)
+
+![Project overview](Webpage_images/projectOverview1.png)
+
+![Project overview details](Webpage_images/projectOverview2.png)
+
+![File explorer and source viewer](Webpage_images/files.png)
+
+![Architecture overview](Webpage_images/architecture1.png)
+
+![Architecture details](Webpage_images/architecture2.png)
+
+![Dependency graph](Webpage_images/graph.png)
+
+![API explorer](Webpage_images/api1.png)
+
+![API details](Webpage_images/api2.png)
+
+![Generated documentation](Webpage_images/documentation.png)
+
+![AI codebase chat](Webpage_images/aichat.png)
+
+![User profile](Webpage_images/profile.png)
 - Dashboard with project summaries and analysis status.
 - Searchable file explorer with nested folders and language filters.
 - Monaco-based source viewer and React Flow dependency graph.
