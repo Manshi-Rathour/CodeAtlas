@@ -247,6 +247,20 @@
   color: #60a5fa;
 }
 
+.brand-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  line-height: 1;
+}
+
+.brand-subtitle {
+  color: #718198;
+  font-size: 9px;
+  letter-spacing: 0.2px;
+  line-height: 1.2;
+}
+
 .nav-links {
   display: flex;
   align-items: center;

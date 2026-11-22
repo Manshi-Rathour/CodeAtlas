@@ -13,8 +13,14 @@ function Navbar() {
             <Network size={22} />
           </span>
 
-          <span className="brand-name">
-            Code<span>Atlas</span>
+          <span className="brand-copy">
+            <span className="brand-name">
+              Code<span>Atlas</span>
+            </span>
+
+            <span className="brand-subtitle">
+              AI Code Intelligence
+            </span>
           </span>
         </Link>
 

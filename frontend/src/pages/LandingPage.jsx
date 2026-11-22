@@ -8,10 +8,12 @@ import {
   Search,
   GitBranch,
   FileCode2,
+  FileText,
+  FolderTree,
   ShieldCheck,
   Network,
+  Layers,
   MessageSquareText,
-  Boxes,
   Zap,
   CheckCircle2,
   Code2,
@@ -160,40 +162,58 @@ function LandingPage() {
 
   const features = [
     {
-      icon: Search,
-      title: 'Understand any codebase',
+      icon: FolderTree,
+      title: 'Explore and understand code',
       description:
-        'Explore unfamiliar projects with structured analysis, file discovery, and intelligent code understanding.',
+        'Browse a searchable file tree with a Monaco viewer, then inspect functions, methods, classes, and code chunks extracted.',
+    },
+        {
+      icon: GitBranch,
+      title: 'Import from GitHub or ZIP',
+      description:
+        'Bring in a public repository with branch selection or upload a ZIP archive, with a complete file inventory.',
+    },
+    {
+      icon: Code2,
+      title: 'Multi-language support',
+      description:
+        'Analyze Python, JavaScript, TypeScript, Java, C/C++, Go, Rust, PHP, Ruby, HTML, CSS, SQL, Swift, Kotlin, and more.',
     },
     {
       icon: Network,
       title: 'Visualize dependencies',
       description:
-        'Discover how files, modules, and components connect through interactive dependency graphs.',
+        'See how files and modules connect through an interactive graph built from resolved internal imports.',
+    },
+    {
+      icon: Layers,
+      title: 'Map architecture and APIs',
+      description:
+        'Explore modules, language distribution, frameworks, libraries, databases, HTTP endpoints, and AI architecture explanations.',
     },
     {
       icon: MessageSquareText,
       title: 'Chat with your code',
       description:
-        'Ask questions in natural language and get contextual answers grounded in your source code.',
+        'Ask questions in natural language and get answers grounded in retrieved source code, with file and line citations.',
     },
     {
-      icon: FileCode2,
-      title: 'Automatic documentation',
+      icon: FileText,
+      title: 'Generate documentation',
       description:
-        'Generate clear project documentation and understand important parts of your application.',
+        'Create practical project documentation from real manifests, symbols, routes, and code context.',
     },
     {
-      icon: Boxes,
-      title: 'Multi-language support',
+      icon: Activity,
+      title: 'Track project metrics',
       description:
-        'Explore projects across different programming languages and technology stacks.',
+        'Measure files, languages, functions, classes, chunks, dependencies, API routes, conversations, and documentation.',
     },
     {
       icon: ShieldCheck,
-      title: 'Built with security in mind',
+      title: 'Secure and private',
       description:
-        'Projects are analyzed as source files. Uploaded code is never executed by the platform.',
+        'Source is never executed, with safe imports, sensitive-file filtering, JWT auth, per-user isolation.',
     },
   ]
 
@@ -392,7 +412,7 @@ function LandingPage() {
               </Link>
 
               <a
-                href="https://github.com"
+                href="https://github.com/Manshi-Rathour/CodeAtlas"
                 target="_blank"
                 rel="noreferrer"
                 className="secondary-button hero-secondary"
@@ -635,8 +655,8 @@ function LandingPage() {
               <span>navigate complex code.</span>
             </h2>
             <p>
-              From understanding project structure to asking AI questions,
-              get a clearer picture of how your software works.
+              From file-level symbols and dependency graphs to APIs, metrics,
+              and AI answers, get a complete picture of how your software works.
             </p>
           </div>
 
@@ -657,7 +677,7 @@ function LandingPage() {
                   </div>
 
                   <span className="feature-number">
-                    0{index + 1}
+                    {String(index + 1).padStart(2, '0')}
                   </span>
 
                   <h3>{feature.title}</h3>
@@ -697,7 +717,8 @@ function LandingPage() {
               </div>
               <h3>Import your project</h3>
               <p>
-                Upload a ZIP file or connect a public GitHub repository.
+                Upload a ZIP archive or import a public GitHub repository
+                with an optional branch, then build a complete file inventory.
               </p>
             </div>
 
@@ -712,7 +733,8 @@ function LandingPage() {
               </div>
               <h3>Analyze your code</h3>
               <p>
-                Discover files, languages, architecture, and dependencies.
+                Parse functions, classes, and imports, resolve dependencies,
+                and detect frameworks, APIs, architecture, and metrics.
               </p>
             </div>
 
@@ -727,7 +749,8 @@ function LandingPage() {
               </div>
               <h3>Explore with AI</h3>
               <p>
-                Ask questions, understand modules, and generate documentation.
+                Browse source and dependency graphs, ask cited questions,
+                and generate grounded documentation with a local model.
               </p>
             </div>
           </div>
