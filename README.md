@@ -122,9 +122,6 @@ backend/app/storage/projects/
 - **Node.js 20+** and npm
 - **Docker** (recommended for PostgreSQL) or an existing PostgreSQL 17 instance
 - **Ollama** (optional) for chat, documentation and architecture explanations
-- A modern browser
-
-Verified locally with Python 3.12 and Node.js 20+.
 
 
 ## Setup
